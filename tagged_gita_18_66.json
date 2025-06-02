@@ -1,0 +1,30 @@
+{
+    "chapter": "18",
+    "shloka": "66",
+    "segments": [
+        {
+            "start": 799,
+            "end": 6077,
+            "label": "sarva-dharmān parityajya",
+            "tag": "line"
+        },
+        {
+            "start": 6333,
+            "end": 11451,
+            "label": "mām ekaṁ śaraṇaṁ vraja",
+            "tag": "line"
+        },
+        {
+            "start": 11643,
+            "end": 17689,
+            "label": "ahaṁ tvāṁ sarva-pāpebhyo",
+            "tag": "line"
+        },
+        {
+            "start": 17977,
+            "end": 22071,
+            "label": "mokṣayiṣyāmi mā śucaḥ",
+            "tag": "line"
+        }
+    ]
+}
