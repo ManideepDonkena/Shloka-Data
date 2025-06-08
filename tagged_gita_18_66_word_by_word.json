@@ -1,0 +1,55 @@
+{
+    "chapter": "18",
+    "shloka": "66",
+    "filename": "Bhagavad-gita 18.66.mp3",
+    "segments": [
+        {
+            "start": 22807,
+            "end": 25142,
+            "label": "sarva-dharmān",
+            "tag": "word"
+        },
+        {
+            "start": 27861,
+            "end": 29749,
+            "label": "parityajya",
+            "tag": "word"
+        },
+        {
+            "start": 32020,
+            "end": 33875,
+            "label": "mām ekaṁ",
+            "tag": "word"
+        },
+        {
+            "start": 35731,
+            "end": 37874,
+            "label": "śaraṇaṁ vraja",
+            "tag": "word"
+        },
+        {
+            "start": 40017,
+            "end": 41264,
+            "label": "ahaṁ",
+            "tag": "word"
+        },
+        {
+            "start": 42448,
+            "end": 45999,
+            "label": "tvāṁ sarva-pāpebhyo",
+            "tag": "word"
+        },
+        {
+            "start": 49326,
+            "end": 51949,
+            "label": "mokṣayiṣyāmi",
+            "tag": "word"
+        },
+        {
+            "start": 54540,
+            "end": 56299,
+            "label": "mā śucaḥ",
+            "tag": "word"
+        }
+    ]
+}
