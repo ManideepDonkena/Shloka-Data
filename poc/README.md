@@ -221,6 +221,12 @@ python3 auto_split.py --all         # → auto_data.json, the DSP baseline
 
 `build_data.py` and `auto_split.py` need `numpy` and `ffmpeg` on `PATH`.
 
+> ⚠️ `build_data.py` **overwrites** `data.json` from the two hand-tagged verses
+> alone. Once you have verified verses through the Tag editor, that is a
+> destructive rebuild — they are not regenerable. Copy `data.json` aside first,
+> or just don't run it; the Tag editor keeps `poc/backups/` for its own saves,
+> but this script bypasses that path.
+
 ### To regenerate the alignments (needs torch)
 
 ```bash
