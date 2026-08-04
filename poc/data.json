@@ -1,0 +1,666 @@
+[
+ {
+  "id": "1.14",
+  "chapter": "1",
+  "shloka": "14",
+  "audio": "audio/1.14.mp3",
+  "sanskrit": "ततः श्वेतैर्हयैर्युक्ते महति स्यन्दने स्थितौ ।\nमाधवः पाण्डवश्चैव दिव्यौ शङ्खौ प्रदध्मतुः ॥ १४ ॥",
+  "translation": "On the other side, both Lord Kṛṣṇa and Arjuna, stationed on a great chariot drawn by white horses, sounded their transcendental conchshells.",
+  "align_cost": 0.02,
+  "verse_audio": {
+   "start": 0,
+   "end": 18.757
+  },
+  "lines": [
+   {
+    "index": 0,
+    "text": "tataḥ śvetair hayair yukte",
+    "line_audio": {
+     "start": 1.9,
+     "end": 5.559
+    },
+    "chunks": [
+     {
+      "text": "tataḥ",
+      "chunk_audio": {
+       "start": 18.713,
+       "end": 19.845
+      },
+      "split_method": "chunk",
+      "words": [
+       {
+        "token": "tataḥ",
+        "synonym": "tataḥ",
+        "meaning": "thereafter",
+        "word_audio": {
+         "start": 18.713,
+         "end": 19.845
+        },
+        "exact": true
+       }
+      ]
+     },
+     {
+      "text": "śvetair hayair yukte",
+      "chunk_audio": {
+       "start": 20.943,
+       "end": 24.101
+      },
+      "split_method": "valley",
+      "words": [
+       {
+        "token": "śvetair",
+        "synonym": "śvetaiḥ",
+        "meaning": "with white",
+        "word_audio": {
+         "start": 20.943,
+         "end": 21.993
+        },
+        "exact": true
+       },
+       {
+        "token": "hayair",
+        "synonym": "hayaiḥ",
+        "meaning": "horses",
+        "word_audio": {
+         "start": 22.116,
+         "end": 22.943
+        },
+        "exact": true
+       },
+       {
+        "token": "yukte",
+        "synonym": "yukte",
+        "meaning": "being yoked",
+        "word_audio": {
+         "start": 23.103,
+         "end": 24.103
+        },
+        "exact": true
+       }
+      ]
+     }
+    ],
+    "token_range": [
+     0,
+     4
+    ]
+   },
+   {
+    "index": 1,
+    "text": "mahati syandane sthitau",
+    "line_audio": {
+     "start": 5.995,
+     "end": 9.859
+    },
+    "chunks": [
+     {
+      "text": "mahati",
+      "chunk_audio": {
+       "start": 27.606,
+       "end": 28.765
+      },
+      "split_method": "chunk",
+      "words": [
+       {
+        "token": "mahati",
+        "synonym": "mahati",
+        "meaning": "in a great",
+        "word_audio": {
+         "start": 27.606,
+         "end": 28.765
+        },
+        "exact": true
+       }
+      ]
+     },
+     {
+      "text": "syandane sthitau",
+      "chunk_audio": {
+       "start": 29.894,
+       "end": 32.212
+      },
+      "split_method": "valley",
+      "words": [
+       {
+        "token": "syandane",
+        "synonym": "syandane",
+        "meaning": "chariot",
+        "word_audio": {
+         "start": 29.894,
+         "end": 31.154
+        },
+        "exact": true
+       },
+       {
+        "token": "sthitau",
+        "synonym": "sthitau",
+        "meaning": "situated",
+        "word_audio": {
+         "start": 31.694,
+         "end": 32.214
+        },
+        "exact": true
+       }
+      ]
+     }
+    ],
+    "token_range": [
+     4,
+     7
+    ]
+   },
+   {
+    "index": 2,
+    "text": "mādhavaḥ pāṇḍavaś caiva",
+    "line_audio": {
+     "start": 10.238,
+     "end": 14.165
+    },
+    "chunks": [
+     {
+      "text": "mādhavaḥ",
+      "chunk_audio": {
+       "start": 36.058,
+       "end": 37.243
+      },
+      "split_method": "chunk",
+      "words": [
+       {
+        "token": "mādhavaḥ",
+        "synonym": "mādhavaḥ",
+        "meaning": "Kṛṣṇa (the husband of the goddess of fortune)",
+        "word_audio": {
+         "start": 36.058,
+         "end": 37.243
+        },
+        "exact": true
+       }
+      ]
+     },
+     {
+      "text": "pāṇḍavaś caiva",
+      "chunk_audio": {
+       "start": 40.149,
+       "end": 42.467
+      },
+      "split_method": "valley",
+      "words": [
+       {
+        "token": "pāṇḍavaś",
+        "synonym": "pāṇḍavaḥ",
+        "meaning": "Arjuna (the son of Pāṇḍu)",
+        "word_audio": {
+         "start": 40.149,
+         "end": 40.949
+        },
+        "exact": true
+       },
+       {
+        "token": "caiva",
+        "synonym": "ca + eva",
+        "meaning": "also / certainly",
+        "word_audio": {
+         "start": 41.889,
+         "end": 42.469
+        },
+        "exact": true
+       }
+      ]
+     }
+    ],
+    "token_range": [
+     7,
+     10
+    ]
+   },
+   {
+    "index": 3,
+    "text": "divyau śaṅkhau pradadhmatuḥ",
+    "line_audio": {
+     "start": 14.499,
+     "end": 18.757
+    },
+    "chunks": [
+     {
+      "text": "divyau śaṅkhau",
+      "chunk_audio": {
+       "start": 42.901,
+       "end": 45.103
+      },
+      "split_method": "valley",
+      "words": [
+       {
+        "token": "divyau",
+        "synonym": "divyau",
+        "meaning": "transcendental",
+        "word_audio": {
+         "start": 42.901,
+         "end": 43.711
+        },
+        "exact": true
+       },
+       {
+        "token": "śaṅkhau",
+        "synonym": "śaṅkhau",
+        "meaning": "conchshells",
+        "word_audio": {
+         "start": 44.551,
+         "end": 45.101
+        },
+        "exact": true
+       }
+      ]
+     },
+     {
+      "text": "pradadhmatuḥ",
+      "chunk_audio": {
+       "start": 49.448,
+       "end": 51.968
+      },
+      "split_method": "chunk",
+      "words": [
+       {
+        "token": "pradadhmatuḥ",
+        "synonym": "pradadhmatuḥ",
+        "meaning": "sounded.",
+        "word_audio": {
+         "start": 49.448,
+         "end": 51.968
+        },
+        "exact": true
+       }
+      ]
+     }
+    ],
+    "token_range": [
+     10,
+     13
+    ]
+   }
+  ],
+  "synonyms": [
+   {
+    "key": "tataḥ",
+    "meaning": "thereafter"
+   },
+   {
+    "key": "śvetaiḥ",
+    "meaning": "with white"
+   },
+   {
+    "key": "hayaiḥ",
+    "meaning": "horses"
+   },
+   {
+    "key": "yukte",
+    "meaning": "being yoked"
+   },
+   {
+    "key": "mahati",
+    "meaning": "in a great"
+   },
+   {
+    "key": "syandane",
+    "meaning": "chariot"
+   },
+   {
+    "key": "sthitau",
+    "meaning": "situated"
+   },
+   {
+    "key": "mādhavaḥ",
+    "meaning": "Kṛṣṇa (the husband of the goddess of fortune)"
+   },
+   {
+    "key": "pāṇḍavaḥ",
+    "meaning": "Arjuna (the son of Pāṇḍu)"
+   },
+   {
+    "key": "ca",
+    "meaning": "also"
+   },
+   {
+    "key": "eva",
+    "meaning": "certainly"
+   },
+   {
+    "key": "divyau",
+    "meaning": "transcendental"
+   },
+   {
+    "key": "śaṅkhau",
+    "meaning": "conchshells"
+   },
+   {
+    "key": "pradadhmatuḥ",
+    "meaning": "sounded."
+   }
+  ]
+ },
+ {
+  "id": "18.66",
+  "chapter": "18",
+  "shloka": "66",
+  "audio": "audio/18.66.mp3",
+  "sanskrit": "सर्वधर्मान्परित्यज्य मामेकं शरणं व्रज ।\nअहं त्वां सर्वपापेभ्यो मोक्षयिष्यामि मा श‍ुच: ॥ ६६ ॥",
+  "translation": "Abandon all varieties of religion and just surrender unto Me. I shall deliver you from all sinful reactions. Do not fear.",
+  "align_cost": 0.003,
+  "verse_audio": {
+   "start": 0.799,
+   "end": 22.071
+  },
+  "lines": [
+   {
+    "index": 0,
+    "text": "sarva-dharmān parityajya",
+    "line_audio": {
+     "start": 0.799,
+     "end": 6.077
+    },
+    "chunks": [
+     {
+      "text": "sarva-dharmān",
+      "chunk_audio": {
+       "start": 22.807,
+       "end": 25.142
+      },
+      "split_method": "chunk",
+      "words": [
+       {
+        "token": "sarva-dharmān",
+        "synonym": "sarva-dharmān",
+        "meaning": "all varieties of religion",
+        "word_audio": {
+         "start": 22.807,
+         "end": 25.142
+        },
+        "exact": true
+       }
+      ]
+     },
+     {
+      "text": "parityajya",
+      "chunk_audio": {
+       "start": 27.861,
+       "end": 29.749
+      },
+      "split_method": "chunk",
+      "words": [
+       {
+        "token": "parityajya",
+        "synonym": "parityajya",
+        "meaning": "abandoning",
+        "word_audio": {
+         "start": 27.861,
+         "end": 29.749
+        },
+        "exact": true
+       }
+      ]
+     }
+    ],
+    "token_range": [
+     0,
+     2
+    ]
+   },
+   {
+    "index": 1,
+    "text": "mām ekaṁ śaraṇaṁ vraja",
+    "line_audio": {
+     "start": 6.333,
+     "end": 11.451
+    },
+    "chunks": [
+     {
+      "text": "mām ekaṁ",
+      "chunk_audio": {
+       "start": 32.02,
+       "end": 33.875
+      },
+      "split_method": "valley",
+      "words": [
+       {
+        "token": "mām",
+        "synonym": "mām",
+        "meaning": "unto Me",
+        "word_audio": {
+         "start": 32.02,
+         "end": 32.51
+        },
+        "exact": true
+       },
+       {
+        "token": "ekaṁ",
+        "synonym": "ekam",
+        "meaning": "only",
+        "word_audio": {
+         "start": 32.72,
+         "end": 33.87
+        },
+        "exact": true
+       }
+      ]
+     },
+     {
+      "text": "śaraṇaṁ vraja",
+      "chunk_audio": {
+       "start": 35.731,
+       "end": 37.874
+      },
+      "split_method": "valley",
+      "words": [
+       {
+        "token": "śaraṇaṁ",
+        "synonym": "śaraṇam",
+        "meaning": "for surrender",
+        "word_audio": {
+         "start": 35.731,
+         "end": 36.451
+        },
+        "exact": true
+       },
+       {
+        "token": "vraja",
+        "synonym": "vraja",
+        "meaning": "go",
+        "word_audio": {
+         "start": 37.121,
+         "end": 37.871
+        },
+        "exact": true
+       }
+      ]
+     }
+    ],
+    "token_range": [
+     2,
+     6
+    ]
+   },
+   {
+    "index": 2,
+    "text": "ahaṁ tvāṁ sarva-pāpebhyo",
+    "line_audio": {
+     "start": 11.643,
+     "end": 17.689
+    },
+    "chunks": [
+     {
+      "text": "ahaṁ",
+      "chunk_audio": {
+       "start": 40.017,
+       "end": 41.264
+      },
+      "split_method": "chunk",
+      "words": [
+       {
+        "token": "ahaṁ",
+        "synonym": "aham",
+        "meaning": "I",
+        "word_audio": {
+         "start": 40.017,
+         "end": 41.264
+        },
+        "exact": true
+       }
+      ]
+     },
+     {
+      "text": "tvāṁ sarva-pāpebhyo",
+      "chunk_audio": {
+       "start": 42.448,
+       "end": 45.999
+      },
+      "split_method": "valley",
+      "words": [
+       {
+        "token": "tvāṁ",
+        "synonym": "tvām",
+        "meaning": "you",
+        "word_audio": {
+         "start": 42.448,
+         "end": 43.038
+        },
+        "exact": true
+       },
+       {
+        "token": "sarva-pāpebhyo",
+        "synonym": "sarva + pāpebhyaḥ",
+        "meaning": "all / from sinful reactions",
+        "word_audio": {
+         "start": 43.368,
+         "end": 45.998
+        },
+        "exact": true
+       }
+      ]
+     }
+    ],
+    "token_range": [
+     6,
+     9
+    ]
+   },
+   {
+    "index": 3,
+    "text": "mokṣayiṣyāmi mā śucaḥ",
+    "line_audio": {
+     "start": 17.977,
+     "end": 22.071
+    },
+    "chunks": [
+     {
+      "text": "mokṣayiṣyāmi",
+      "chunk_audio": {
+       "start": 49.326,
+       "end": 51.949
+      },
+      "split_method": "chunk",
+      "words": [
+       {
+        "token": "mokṣayiṣyāmi",
+        "synonym": "mokṣayiṣyāmi",
+        "meaning": "will deliver",
+        "word_audio": {
+         "start": 49.326,
+         "end": 51.949
+        },
+        "exact": true
+       }
+      ]
+     },
+     {
+      "text": "mā śucaḥ",
+      "chunk_audio": {
+       "start": 54.54,
+       "end": 56.299
+      },
+      "split_method": "valley",
+      "words": [
+       {
+        "token": "mā",
+        "synonym": "mā",
+        "meaning": "do not",
+        "word_audio": {
+         "start": 54.54,
+         "end": 55.13
+        },
+        "exact": true
+       },
+       {
+        "token": "śucaḥ",
+        "synonym": "śucaḥ",
+        "meaning": "worry.",
+        "word_audio": {
+         "start": 55.69,
+         "end": 56.29
+        },
+        "exact": true
+       }
+      ]
+     }
+    ],
+    "token_range": [
+     9,
+     12
+    ]
+   }
+  ],
+  "synonyms": [
+   {
+    "key": "sarva-dharmān",
+    "meaning": "all varieties of religion"
+   },
+   {
+    "key": "parityajya",
+    "meaning": "abandoning"
+   },
+   {
+    "key": "mām",
+    "meaning": "unto Me"
+   },
+   {
+    "key": "ekam",
+    "meaning": "only"
+   },
+   {
+    "key": "śaraṇam",
+    "meaning": "for surrender"
+   },
+   {
+    "key": "vraja",
+    "meaning": "go"
+   },
+   {
+    "key": "aham",
+    "meaning": "I"
+   },
+   {
+    "key": "tvām",
+    "meaning": "you"
+   },
+   {
+    "key": "sarva",
+    "meaning": "all"
+   },
+   {
+    "key": "pāpebhyaḥ",
+    "meaning": "from sinful reactions"
+   },
+   {
+    "key": "mokṣayiṣyāmi",
+    "meaning": "will deliver"
+   },
+   {
+    "key": "mā",
+    "meaning": "do not"
+   },
+   {
+    "key": "śucaḥ",
+    "meaning": "worry."
+   }
+  ]
+ }
+]

@@ -1,0 +1,1557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shloka — verse learner POC</title>
+<style>
+  :root{
+    --bg:#faf7f2; --panel:#fff; --ink:#241f1a; --muted:#7a6f63; --line:#e6ded1;
+    --accent:#a8471b; --accent-soft:#f6e5da; --ok:#2f6b4f; --ok-soft:#e3f0e8;
+    --warn:#9a6a12; --warn-soft:#faeed6; --info:#2b5d86; --info-soft:#e0ecf6;
+    --live:#c9761f;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#17140f; --panel:#211d17; --ink:#f0e9df; --muted:#a1958a;
+           --line:#342d24; --accent:#e2884f; --accent-soft:#3d2b1d;
+           --ok:#7fc3a0; --ok-soft:#1d2f26; --warn:#d9ac5c; --warn-soft:#33290f;
+           --info:#7fb2dc; --info-soft:#16273a; --live:#f0a45f; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.6 ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:1020px;margin:0 auto;padding:18px 16px 40px}
+  header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+    justify-content:space-between;margin-bottom:14px}
+  h1{font-size:19px;margin:0}
+  h1 small{display:block;font-weight:400;font-size:12.5px;color:var(--muted)}
+  select,button,input{font:inherit;color:inherit;background:var(--panel);
+    border:1px solid var(--line);border-radius:9px;padding:6px 11px}
+  button{cursor:pointer;transition:.12s}
+  button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+  button:disabled{opacity:.4;cursor:default}
+  button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  button.primary:hover:not(:disabled){filter:brightness(1.08);color:#fff}
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:16px}
+  .tab{border:none;background:none;border-bottom:2px solid transparent;
+    border-radius:0;padding:9px 15px;color:var(--muted)}
+  .tab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:18px;margin-bottom:14px}
+  .card h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.09em;
+    color:var(--muted);margin:0 0 12px;font-weight:600}
+  .deva{font-size:22px;line-height:1.9;white-space:pre-line;
+    font-family:"Noto Sans Devanagari","Nirmala UI",serif}
+
+  /* ---- transport ---- */
+  .transport{position:sticky;top:0;z-index:20;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;padding:10px 14px;
+    margin-bottom:14px;box-shadow:0 2px 14px rgba(0,0,0,.05)}
+  .tline{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .tbig{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;
+    padding:0;font-size:14px}
+  #seek{flex:1;min-width:180px;padding:0;background:none;border:none;accent-color:var(--accent)}
+  .tt{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .nowplay{font-size:12.5px;color:var(--accent);min-height:19px;margin-top:4px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* ---- verse text ---- */
+  .line{display:flex;gap:10px;align-items:flex-start;padding:7px 4px;border-radius:9px}
+  .line+.line{border-top:1px dashed var(--line)}
+  .line.live{background:var(--accent-soft)}
+  .lbtn{flex:none;width:28px;height:28px;border-radius:50%;display:grid;
+    place-items:center;font-size:10px;color:var(--muted);padding:0}
+  .words{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+  .w{border:1px solid transparent;background:transparent;border-radius:8px;
+    padding:3px 9px;font-size:19px}
+  .w:hover{background:var(--accent-soft);border-color:var(--accent);color:inherit}
+  .w.live{background:var(--live);color:#fff;border-color:var(--live);
+    transform:translateY(-1px)}
+  .w.due{outline:2px dashed var(--accent);outline-offset:2px}
+  .w.suspect{text-decoration:underline wavy var(--warn);text-underline-offset:5px}
+  .sep{color:var(--line);user-select:none}
+  .chunkbtn{font-size:11px;color:var(--muted);padding:2px 7px;border-radius:6px;
+    border:1px dashed var(--line);background:transparent}
+  .chunkbtn.live{border-style:solid;border-color:var(--live);color:var(--live)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .row.mb{margin-bottom:12px}
+  .hint{font-size:12.5px;color:var(--muted);margin-top:9px}
+  label.f{font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center}
+
+  #detail{position:sticky;bottom:10px;background:var(--panel);
+    border:1px solid var(--accent);border-radius:13px;padding:12px 16px;
+    box-shadow:0 6px 24px rgba(0,0,0,.12)}
+  #detail .tok{font-size:21px;font-weight:600}
+  #detail .mean{color:var(--muted)}
+  #detail .meta{font-size:12px;color:var(--muted);margin-top:5px;font-variant-numeric:tabular-nums}
+  .syn{display:grid;grid-template-columns:minmax(130px,auto) 1fr;gap:5px 18px;font-size:14px}
+  .syn dt{font-weight:600}
+  .syn dd{margin:0;color:var(--muted)}
+
+  /* ---- teacher ---- */
+  .stage{text-align:center;padding:24px 12px;border-radius:12px;
+    background:var(--accent-soft);border:1px solid var(--line);margin-bottom:14px}
+  .stage .st{font-size:11.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+  .stage .unit{font-size:31px;font-weight:600;margin:6px 0;min-height:44px;
+    font-family:"Noto Sans Devanagari","Nirmala UI",serif}
+  .stage .sub{font-size:13.5px;color:var(--muted);min-height:20px}
+  .bar{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:12px}
+  .bar i{display:block;height:100%;background:var(--accent);width:0}
+  .stage.turn{background:var(--ok-soft)}
+  .stage.turn .bar i{background:var(--ok)}
+
+  /* ---- QA ---- */
+  .qarow{border:1px solid var(--line);border-radius:11px;padding:12px 14px;margin-bottom:9px}
+  .qahead{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+  .badge{font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid transparent}
+  .b-clean{background:var(--ok-soft);color:var(--ok);border-color:var(--ok)}
+  .b-weak{background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}
+  .b-fail{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+  .b-info{background:var(--info-soft);color:var(--info);border-color:var(--info)}
+  .maprow{display:flex;flex-wrap:wrap;gap:6px;margin:5px 0}
+  .mtok{border:1px solid var(--line);border-radius:8px;padding:4px 8px;min-width:64px}
+  .mtok .t{font-size:16px}
+  .mtok .s,.mtok .m{font-size:11.5px;color:var(--muted);max-width:200px}
+  .mtok.weak{border-color:var(--warn);background:var(--warn-soft)}
+  .mtok.rep{border-style:dashed;border-color:var(--info)}
+  .mono{font-variant-numeric:tabular-nums}
+  .scroll{overflow-x:auto}
+  .practice .w{color:transparent;background:var(--line);border-radius:6px}
+  .practice .w.live,.practice .w:hover,.practice .w.due{color:inherit;background:var(--accent-soft)}
+  .practice .w.live{background:var(--live);color:#fff}
+
+  /* ---- tag editor ---- */
+  #wave{width:100%;display:block;border:1px solid var(--line);border-radius:10px;
+    background:var(--bg);cursor:crosshair;touch-action:none}
+  table.tg{width:100%;border-collapse:collapse;font-size:13.5px}
+  table.tg th{text-align:left;font-size:11px;text-transform:uppercase;
+    letter-spacing:.07em;color:var(--muted);font-weight:600;padding:6px 8px;
+    border-bottom:1px solid var(--line)}
+  table.tg td{padding:5px 8px;border-bottom:1px solid var(--line);
+    font-variant-numeric:tabular-nums}
+  table.tg tr{cursor:pointer}
+  table.tg tr:hover td{background:var(--accent-soft)}
+  table.tg tr.sel td{background:var(--accent-soft);
+    box-shadow:inset 3px 0 0 var(--accent)}
+  table.tg tr.dirty td:first-child::after{content:' ●';color:var(--accent)}
+  table.tg .lv{font-size:11px;padding:1px 7px;border-radius:20px;
+    border:1px solid var(--line);color:var(--muted)}
+  table.tg .txt{font-size:15px}
+  table.tg td.num{width:88px;color:var(--muted)}
+  .warnrow td{background:var(--warn-soft) !important}
+  .tightrow td:nth-child(6){color:var(--accent);font-weight:600}
+  .tgwho{font-size:15px;margin-bottom:12px}
+  .tgwho b{font-size:19px}
+  .tgwho .muted{color:var(--muted);font-size:12.5px}
+  .bnd{display:flex;flex-direction:column;gap:8px}
+  .bl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+    border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+  .btag{font-size:10.5px;letter-spacing:.09em;font-weight:700;padding:2px 8px;
+    border-radius:20px;color:#fff}
+  .btag.s{background:var(--ok)} .btag.e{background:var(--info)}
+  .bval{min-width:78px;font-size:15px}
+  .bl button{padding:4px 9px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Shloka <small>verse learner — proof of concept</small></h1>
+    <div class="row">
+      <select id="verseSel"></select>
+      <label class="f">source
+        <select id="autoSrc">
+          <option value="none">hand-tagged only</option>
+          <option value="mms">+ MMS forced alignment</option>
+          <option value="sushrota">+ Sushrota (Sanskrit Conformer)</option>
+          <option value="dsp">+ DSP auto-split</option>
+        </select>
+      </label>
+      <label class="f">order
+        <select id="vOrder">
+          <option value="verse">by verse</option>
+          <option value="review">worst first</option>
+        </select>
+      </label>
+      <span class="hint" id="autoN" style="margin:0"></span>
+      <span class="badge" id="autoBadge" hidden></span>
+    </div>
+  </header>
+
+  <div class="transport">
+    <div class="tline">
+      <button id="tPlay" class="tbig primary" title="Play / pause">▶</button>
+      <span class="tt" id="tCur">0:00.0</span>
+      <input type="range" id="seek" min="0" max="100" step="0.01" value="0">
+      <span class="tt" id="tDur">0:00.0</span>
+      <label class="f">speed
+        <select id="tRate">
+          <option value="0.5">0.5×</option><option value="0.75">0.75×</option>
+          <option value="1" selected>1×</option><option value="1.25">1.25×</option>
+        </select>
+      </label>
+      <label class="f" title="Silence before the clip — no neighbouring audio is played">lead-in
+        <input type="number" id="padIn" value="80" min="0" max="600" step="10" style="width:66px"> ms
+      </label>
+      <label class="f" title="Silence after the clip — no neighbouring audio is played">tail
+        <input type="number" id="padOut" value="150" min="0" max="900" step="10" style="width:66px"> ms
+      </label>
+      <button id="tStop" title="Stop">■</button>
+    </div>
+    <div class="nowplay" id="nowPlay">—</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="study">Study</button>
+    <button class="tab" data-tab="recite">Recite</button>
+    <button class="tab" data-tab="qa">Mapping QA</button>
+    <button class="tab" data-tab="tag">Tag editor</button>
+  </div>
+
+  <!-- ============ STUDY ============ -->
+  <section id="t-study">
+    <div class="card">
+      <h2>Sanskrit</h2>
+      <div class="deva" id="deva"></div>
+    </div>
+
+    <div class="card">
+      <h2>Transliteration — click a word to hear it</h2>
+      <div class="row mb">
+        <button id="playVerse" class="primary">▶ Whole verse</button>
+        <button id="playWords">▶ Words only</button>
+        <button id="practiceBtn">Practice mode</button>
+      </div>
+      <div id="lines"></div>
+      <div class="hint" id="hint"></div>
+    </div>
+
+    <div class="card"><h2>Translation</h2><div id="translation"></div></div>
+
+    <div class="card">
+      <h2>Word meanings</h2>
+      <div class="scroll"><dl class="syn" id="syn"></dl></div>
+    </div>
+
+    <div id="detail">
+      <div class="tok" id="dTok">Click a word</div>
+      <div class="mean" id="dMean">Its recorded utterance plays and its meaning appears here.</div>
+      <div class="meta" id="dMeta"></div>
+    </div>
+  </section>
+
+  <!-- ============ RECITE ============ -->
+  <section id="t-recite" hidden>
+    <div class="card">
+      <h2>Teacher-style recitation</h2>
+      <div class="row mb">
+        <label class="f">Level
+          <select id="rLevel">
+            <option value="progressive">Progressive (word → phrase → line → verse)</option>
+            <option value="word">Words only</option>
+            <option value="chunk">Phrases only</option>
+            <option value="line">Lines only</option>
+            <option value="verse">Whole verse</option>
+          </select>
+        </label>
+        <label class="f">Repeat
+          <select id="rReps"><option>1</option><option selected>2</option>
+            <option>3</option><option>4</option><option>5</option></select>×
+        </label>
+        <label class="f">Your-turn gap
+          <select id="rGap">
+            <option value="0">none</option><option value="0.8">0.8×</option>
+            <option value="1" selected>1×</option><option value="1.5">1.5×</option>
+            <option value="2">2×</option>
+          </select>
+        </label>
+        <label class="f"><input type="checkbox" id="rCumul"> Cumulative build-up</label>
+        <label class="f">pace
+          <select id="rPace">
+            <option value="1.5">unhurried</option>
+            <option value="1" selected>steady</option>
+            <option value="0.65">brisk</option>
+          </select>
+        </label>
+        <label class="f"><input type="checkbox" id="rCue" checked> cue tone</label>
+      </div>
+      <div class="row mb">
+        <button id="rStart" class="primary">▶ Start</button>
+        <button id="rPause" disabled>❚❚ Pause</button>
+        <button id="rStop" disabled>■ Stop</button>
+        <button id="rSkip" disabled>⏭ Skip</button>
+      </div>
+      <div class="stage" id="stage">
+        <div class="st" id="stState">ready</div>
+        <div class="unit" id="stUnit">—</div>
+        <div class="sub" id="stSub">The teacher chants, pauses, then leaves you the same span to chant back.</div>
+        <div class="bar"><i id="stBar"></i></div>
+      </div>
+      <div class="hint" id="rHint"></div>
+    </div>
+    <div class="card"><h2>Verse</h2><div id="rLines"></div></div>
+  </section>
+
+  <!-- ============ QA ============ -->
+  <section id="t-qa" hidden>
+    <div class="card">
+      <h2>Sandhi &amp; synonym mapping — all verses</h2>
+      <div class="row mb">
+        <input id="qSearch" placeholder="verse e.g. 2.47" style="width:132px">
+        <label class="f">Show
+          <select id="qFilter">
+            <option value="weak">Needs review</option>
+            <option value="all">All</option>
+            <option value="clean">Clean</option>
+            <option value="failed">Failed</option>
+            <option value="combined">Combined verses</option>
+            <option value="repeat">Has repeated words</option>
+          </select>
+        </label>
+        <span id="qStats" class="hint" style="margin:0"></span>
+        <span class="hint" style="margin:0">↺ reused key · ✎ repaired by 2nd pass</span>
+      </div>
+      <div id="qList"></div>
+      <div class="row" style="justify-content:center;margin-top:12px">
+        <button id="qMore" hidden>Load more</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TAG EDITOR ============ -->
+  <section id="t-tag" hidden>
+    <div class="card">
+      <h2>Waveform — drag to select, click to seek</h2>
+      <canvas id="wave" height="150"></canvas>
+      <div class="row mb" style="margin-top:10px">
+        <button id="wZoomIn">＋ zoom</button>
+        <button id="wZoomOut">－ zoom</button>
+        <button id="wFit">fit</button>
+        <button id="wPlaySel" class="primary">▶ selection</button>
+        <button id="wLoopSel">↻ loop selection</button>
+        <span class="tt" id="wSelInfo">no selection</span>
+      </div>
+      <div class="hint">The curve is high-passed and floor-subtracted, not a raw waveform —
+        the steady drone is suppressed so pauses between words are visible. Scroll to zoom,
+        drag to select, click to seek.</div>
+    </div>
+
+    <div class="card">
+      <h2>Boundaries — the only thing you edit</h2>
+      <div id="tgWho" class="tgwho">Pick a segment from the list below.</div>
+
+      <div class="bnd" id="tgBnd">
+        <div class="bl">
+          <span class="btag s">START</span>
+          <span class="bval mono" id="tgStartVal">—</span>
+          <button id="tgHearStart" class="primary">▶ hear start</button>
+          <button data-nudge="s-100">−100</button>
+          <button data-nudge="s-20">−20</button>
+          <button data-nudge="s20">+20</button>
+          <button data-nudge="s100">+100</button>
+          <button id="tgSetStart" title="Use the left edge of your drag selection">⇤ from selection</button>
+        </div>
+        <div class="bl">
+          <span class="btag e">END</span>
+          <span class="bval mono" id="tgEndVal">—</span>
+          <button id="tgHearEnd" class="primary">▶ hear end</button>
+          <button data-nudge="e-100">−100</button>
+          <button data-nudge="e-20">−20</button>
+          <button data-nudge="e20">+20</button>
+          <button data-nudge="e100">+100</button>
+          <button id="tgSetEnd" title="Use the right edge of your drag selection">⇥ from selection</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <button id="tgPlayWhole">▶ whole segment</button>
+        <button id="tgPlayPad">▶ with padding</button>
+        <button id="tgPrev">◀ prev</button>
+        <button id="tgNext">next ▶</button>
+        <label class="f"><input type="checkbox" id="tgFocus" checked> show only this segment</label>
+      </div>
+      <div class="hint">Playback padding is clamped to the real gap, so auditioning a
+        word never bleeds into the next one — 48% of word gaps are under the default
+        150 ms tail. A <b>gap</b> under 50 ms in the table means the two words run
+        together with no detectable pause, so that cut is guesswork worth checking.</div>
+      <div class="hint">“Hear start / end” plays a short window across that boundary
+        and zooms the waveform to it, so you can tell whether the cut lands on the
+        voice. You can also drag the START or END line directly on the waveform.</div>
+    </div>
+
+    <div class="card">
+      <h2>Segments</h2>
+      <div class="row mb">
+        <label class="f">Show
+          <select id="tgLevel">
+            <option value="all">all levels</option>
+            <option value="word">words</option>
+            <option value="phrase">phrases</option>
+            <option value="line">lines</option>
+          </select>
+        </label>
+      </div>
+      <div id="tgList" class="scroll"></div>
+    </div>
+
+    <div class="card">
+      <h2>Save</h2>
+      <div class="row mb">
+        <button id="tgAccept">✓ Accept verse as verified</button>
+        <button id="tgNextUnverified">→ next unverified</button>
+        <span class="hint" id="tgProgress" style="margin:0"></span>
+      </div>
+      <div class="row mb">
+        <button id="saveLocal" class="primary">💾 Save to disk</button>
+        <button id="saveGh">☁ Commit to GitHub</button>
+        <button id="tgDownload">⬇ Download copy</button>
+        <button id="tgRevert">↩ Revert unsaved</button>
+        <span class="hint" id="tgStatus" style="margin:0"></span>
+      </div>
+      <details id="ghBox">
+        <summary class="hint" style="cursor:pointer">GitHub settings — needed once, to tag from a hosted site</summary>
+        <div class="row" style="margin-top:10px">
+          <label class="f">repo <input id="ghRepo" placeholder="owner/name" style="width:220px"></label>
+          <label class="f">branch <input id="ghBranch" value="main" style="width:90px"></label>
+          <label class="f">path <input id="ghPath" value="poc/data.json" style="width:170px"></label>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="f">token <input id="ghToken" type="password" placeholder="github_pat_..." style="width:300px"></label>
+          <button id="ghSaveCfg">Remember</button>
+          <button id="ghClear">Forget token</button>
+        </div>
+        <div class="hint">Use a <b>fine-grained</b> personal access token limited to this one
+          repository with <b>Contents: read and write</b>. It is kept in this browser
+          (localStorage) and sent only to api.github.com. Anyone with access to this
+          browser profile can read it — use a short expiry.</div>
+      </details>
+      <div class="hint">“Save to disk” needs <code>python3 server.py</code> running locally.
+        “Commit to GitHub” works from anywhere, including GitHub Pages, and gives you
+        version history for free.</div>
+    </div>
+  </section>
+</div>
+
+
+<script>
+const $ = s => document.querySelector(s);
+let DATA = [], V = null, MAP = null;
+/* Two deployments: server.py exposes /braja/<file>; a static host (GitHub
+   Pages) serves the repo directly, so reach the folder relatively instead. */
+let SERVER = false;
+const BRAJA_STATIC = '../BrajaBeats_Gita_MP3/';
+function audioUrl(v){
+  if (v.source_file) return (SERVER ? 'braja/' : BRAJA_STATIC) + encodeURIComponent(v.source_file);
+  return v.audio;
+}
+let SPANS = [];              // {start,end,el,kind} for live highlighting
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const fmt = t => `${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}.${Math.floor((t%1)*10)}`;
+
+/* ================== playback core ==================
+   Segment playback used to seek an <audio> element. That is fragile: the seek
+   is dropped before metadata loads, and if the server cannot serve byte ranges
+   the browser silently restarts the clip from 0 -- which is exactly what went
+   wrong. So decode the file ONCE with Web Audio and play sample-exact ranges
+   with AudioBufferSourceNode.start(when, offset, duration). No seeking at all. */
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+const GAIN = AC.createGain(); GAIN.connect(AC.destination);
+
+let BUF = null;            // decoded AudioBuffer for the open verse
+let bufKey = null;
+let src = null;            // live BufferSource
+let token = 0, raf = null;
+let atCtx = 0, atOff = 0;  // AC clock + buffer offset when playback began
+let paused = true, pausedAt = 0, playEnd = null, rate = 1;
+let resolveEnd = null;
+
+const DUR = () => (BUF ? BUF.duration : 0);
+function POS(){
+  if (paused) return pausedAt;
+  return Math.min(DUR(), Math.max(atOff, atOff + (AC.currentTime - atCtx) * rate));
+}
+
+function clearRaf(){ if (raf){ cancelAnimationFrame(raf); raf = null; } }
+
+function killSrc(reason){
+  if (src){ src.onended = null; try { src.stop(); } catch(e){} src = null; }
+  if (resolveEnd){ const r = resolveEnd; resolveEnd = null; r(reason || 'cancel'); }
+}
+
+async function loadBuffer(url){
+  if (bufKey === url && BUF) return BUF;
+  const raw = await (await fetch(url)).arrayBuffer();
+  BUF = await AC.decodeAudioData(raw);
+  bufKey = url;
+  $('#tDur').textContent = fmt(BUF.duration);
+  $('#seek').max = BUF.duration;
+  return BUF;
+}
+
+/** Play exactly [start,end], optionally wrapped in silence. */
+function playSpan(start, end, label, lead = 0, tail = 0){
+  const my = ++token;
+  killSrc('cancel'); clearRaf();
+  if (!BUF) return Promise.resolve('err');
+  start = Math.max(0, Math.min(start, BUF.duration));
+  end   = Math.max(start + 0.02, Math.min(end, BUF.duration));
+  if (AC.state === 'suspended') AC.resume();
+
+  $('#nowPlay').textContent = label || '—';
+  src = AC.createBufferSource();
+  src.buffer = BUF; src.playbackRate.value = rate;
+  src.connect(GAIN);
+  const when = AC.currentTime + lead;          // silent lead-in
+  atCtx = when; atOff = start; playEnd = end; paused = false;
+  src.start(when, start, end - start);
+
+  $('#tPlay').textContent = '❚❚';
+  uiTick();
+  return new Promise(res => {
+    resolveEnd = res;
+    src.onended = () => {
+      if (my !== token) return;
+      paused = true; pausedAt = end; src = null;
+      $('#tPlay').textContent = '▶';
+      clearHighlights();
+      const finish = () => {
+        if (my !== token) return;
+        $('#nowPlay').textContent = '—';
+        const r = resolveEnd; resolveEnd = null; if (r) r('done');
+      };
+      tail > 0 ? setTimeout(finish, tail * 1000) : finish();   // silent tail
+    };
+  });
+}
+
+function stopAll(){
+  token++; killSrc('cancel'); clearRaf(); FOCUS = null;
+  paused = true; $('#tPlay').textContent = '▶'; $('#nowPlay').textContent = '—';
+  clearHighlights();
+}
+function clearHighlights(){ FOCUS = null; SPANS.forEach(s => s.el.classList.remove('live')); }
+
+/* Tags are cut tight to the voice, which sounds clipped and rushed on playback.
+   Keep a little audio either side — words/phrases get the user's padding,
+   lines and the verse only a hair. */
+/* Padding is SILENCE, never neighbouring audio.
+
+   Extending the clip to avoid an abrupt cut meant playing part of the next word
+   -- the median gap between words is only ~160 ms. So the clip stays exactly on
+   the tagged span and the breathing room is scheduled silence either side. */
+function silenceFor(kind){
+  const wide = (kind === 'word' || kind === 'phrase' || kind === 'chunk');
+  return wide
+    ? [(+$('#padIn').value || 0)/1000, (+$('#padOut').value || 0)/1000]
+    : [0.05, 0.10];
+}
+/* When you ask for one word, only that word should light up. Otherwise the
+   highlighter is purely positional and any span containing the playhead -- the
+   next word, once padding crosses into it -- lights up too. */
+let FOCUS = null;
+function playUnit(span, kind, label, el){
+  FOCUS = el || null;
+  const [lead, tail] = silenceFor(kind);
+  return playSpan(span.start, span.end, label, lead, tail);
+}
+['#padIn','#padOut'].forEach(s => {
+  const el = $(s), key = 'shloka' + s;
+  const v = localStorage.getItem(key); if (v !== null) el.value = v;
+  el.onchange = () => localStorage.setItem(key, el.value);
+});
+
+/* ---- transport + live highlight ---- */
+function uiTick(){
+  const t = POS(), d = DUR();
+  $('#tCur').textContent = fmt(t);
+  if (d){ $('#seek').max = d; $('#seek').value = t; $('#tDur').textContent = fmt(d); }
+  if (FOCUS){
+    // explicit single-unit playback: highlight just what was asked for
+    for (const s of SPANS) s.el.classList.toggle('live', s.el === FOCUS);
+  } else {
+    for (const s of SPANS) s.el.classList.toggle('live', t >= s.start && t < s.end);
+  }
+  if (!$('#t-tag').hidden) tgDraw();
+  raf = paused ? null : requestAnimationFrame(uiTick);
+}
+
+$('#tPlay').onclick = () => {
+  if (paused) playSpan(pausedAt >= DUR() - 0.05 ? 0 : pausedAt, DUR(), 'full file');
+  else { pausedAt = POS(); stopAll(); }
+};
+$('#tStop').onclick = () => { stopSession(); stopAll(); pausedAt = 0; uiTick(); };
+$('#seek').oninput = e => {
+  const t = +e.target.value;
+  const wasPlaying = !paused;
+  stopAll(); pausedAt = t;
+  $('#tCur').textContent = fmt(t);
+  if (!$('#t-tag').hidden) tgDraw();
+  if (wasPlaying) playSpan(t, DUR(), 'full file');
+};
+$('#tRate').onchange = e => {
+  rate = +e.target.value;
+  if (src) src.playbackRate.value = rate;
+};
+
+/* ================== tabs ================== */
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
+  ['study','recite','qa','tag'].forEach(t => $('#t-'+t).hidden = (t !== b.dataset.tab));
+  if (b.dataset.tab === 'qa') loadMapping();
+  if (b.dataset.tab === 'tag') tgInit();
+  if (b.dataset.tab !== 'recite') stopSession();
+});
+
+/* ================== verse rendering ================== */
+function renderLines(box, v, tag){
+  box.innerHTML = '';
+  v.lines.forEach(L => {
+    const row = document.createElement('div'); row.className = 'line';
+    const lb = document.createElement('button');
+    lb.className = 'lbtn'; lb.textContent = '▶'; lb.title = 'Play line';
+    lb.disabled = !L.line_audio;
+    if (L.line_audio){
+      lb.onclick = () => playUnit(L.line_audio, 'line', 'line — ' + L.text, row);
+      SPANS.push({start:L.line_audio.start, end:L.line_audio.end, el:row, kind:'line'});
+    }
+    row.append(lb);
+
+    const ws = document.createElement('div'); ws.className = 'words';
+    L.chunks.forEach((C, ci) => {
+      if (ci){ const s=document.createElement('span'); s.className='sep'; s.textContent='·'; ws.append(s); }
+      C.words.forEach(w => {
+        const b = document.createElement('button');
+        b.className = 'w' + (w.suspect ? ' suspect' : '');
+        b.textContent = w.token;
+        if (w.suspect) b.title = `span looks wrong: ${w.dur_ratio}x the expected `
+          + `duration for ${w.token.length ? 'its' : ''} syllable count`;
+        b.dataset.key = tag + ':' + w.word_audio.start;
+        b.onclick = () => {
+          playUnit(w.word_audio, 'word', 'word — ' + w.token, b);
+          $('#dTok').textContent = w.token;
+          $('#dMean').textContent = w.meaning || '—';
+          $('#dMeta').textContent = `synonym: ${w.synonym || '—'}  ·  `
+            + `${w.word_audio.start.toFixed(2)}–${w.word_audio.end.toFixed(2)}s  ·  phrase “${C.text}”`
+            + (w.score != null ? `  ·  align score ${w.score}` : '');
+        };
+        SPANS.push({start:w.word_audio.start, end:w.word_audio.end, el:b, kind:'word'});
+        ws.append(b);
+      });
+      const cb = document.createElement('button');
+      cb.className = 'chunkbtn'; cb.textContent = '▶ phrase';
+      cb.title = 'Play “' + C.text + '”';
+      cb.onclick = () => playUnit(C.chunk_audio, 'phrase', 'phrase — ' + C.text, cb);
+      SPANS.push({start:C.chunk_audio.start, end:C.chunk_audio.end, el:cb, kind:'chunk'});
+      ws.append(cb);
+    });
+    row.append(ws); box.append(row);
+  });
+}
+
+function render(v){
+  stopSession(); stopAll();
+  V = v; SPANS = [];
+  V._url = audioUrl(v);
+  pausedAt = 0;
+  loadBuffer(V._url).then(() => { if (!$('#t-tag').hidden) tgInit(true); uiTick(); })
+                    .catch(e => { $('#nowPlay').textContent = 'could not load audio: ' + e.message; });
+  $('#deva').textContent = v.sanskrit;
+  $('#translation').textContent = v.translation;
+  const syn = $('#syn'); syn.innerHTML = '';
+  v.synonyms.forEach(s => {
+    const dt = document.createElement('dt'); dt.textContent = s.key;
+    const dd = document.createElement('dd'); dd.textContent = s.meaning;
+    syn.append(dt, dd);
+  });
+  renderLines($('#lines'), v, 'study');
+  renderLines($('#rLines'), v, 'recite');
+
+  $('#playVerse').onclick = () => {
+    if (!v.verse_audio) return;
+    FOCUS = null;                       // whole verse: positional highlighting
+    playUnit(v.verse_audio, 'verse', 'whole verse');
+  };
+  $('#playWords').onclick = playWordsOnly;
+
+  const nw = v.lines.reduce((a,L)=>a+L.chunks.reduce((b,C)=>b+C.words.length,0),0);
+  const np = v.lines.reduce((a,L)=>a+L.chunks.length,0);
+  const bg = $('#autoBadge');
+  bg.hidden = !v.auto;
+  if (v.auto){
+    const sus = v.suspect_words || 0;
+    const cs = CONS && CONS[v.id];
+    bg.textContent = (v.aligner === 'mms' ? 'MMS alignment' : 'DSP split')
+      + ` · confidence ${Math.round(v.confidence*100)}%`
+      + (v.review_score != null ? ` · review ${Math.round(v.review_score*100)}%` : '')
+      + (sus ? ` · ${sus} suspect span${sus>1?'s':''}` : '')
+      + (cs ? ` · aligners agree ${Math.round(cs.agree*100)}%` : '');
+    bg.className = 'badge ' + ((cs && cs.agree < 0.5) || sus ? 'b-weak'
+      : (v.confidence >= 0.6 ? 'b-info' : 'b-weak'));
+  }
+  $('#hint').textContent = `${v.lines.length} lines · ${np} phrases · ${nw} words. `
+    + `Word and phrase audio come from the slow word-by-word pass; line and verse audio `
+    + (v.auto ? 'Boundaries are machine-estimated — verify in the Tag editor.' : `Alignment cost ${v.align_cost}.`);
+}
+
+function allWords(v){
+  const out = [];
+  v.lines.forEach(L => L.chunks.forEach(C => C.words.forEach(w => out.push({w, C}))));
+  return out.sort((a,b) => a.w.word_audio.start - b.w.word_audio.start);
+}
+
+/** Play only the word utterances back to back, skipping the echoes between.
+    A separate sequence token so any single-word click cleanly aborts the run. */
+let seqToken = 0;
+async function playWordsOnly(){
+  const mine = ++seqToken;
+  stopAll();
+  for (const {w} of allWords(V)){
+    if (mine !== seqToken) return;
+    const r = await playUnit(w.word_audio, 'word', 'word — ' + w.token);
+    if (r === 'cancel' || mine !== seqToken) return;
+    await sleep(160);
+  }
+  $('#nowPlay').textContent = '—';
+}
+
+$('#practiceBtn').onclick = e => {
+  document.body.classList.toggle('practice');
+  e.target.textContent = document.body.classList.contains('practice') ? 'Show words' : 'Practice mode';
+};
+
+/* ================== teacher engine ==================
+   Practice needs deliberate silence, not just clips back to back. Each unit is
+   framed: settle -> listen -> breath -> your turn -> rest, with a soft tone
+   marking the handover so you are not watching the screen to know when to
+   chant. Every interval scales with the pace setting. */
+
+/** Short sine blip: a low tone hands over to you, a higher one hands back. */
+function cue(kind){
+  if (!$('#rCue').checked) return;
+  const t0 = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
+  o.type = 'sine';
+  o.frequency.value = kind === 'you' ? 660 : 440;
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.09, t0 + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16);
+  o.connect(g).connect(AC.destination);
+  o.start(t0); o.stop(t0 + 0.18);
+}
+
+const PACE = () => +$('#rPace').value || 1;
+/* Framing intervals, in seconds before pace scaling. */
+const BEAT = {
+  settle:  0.35,   // silence before the teacher speaks
+  breath:  0.30,   // after the clip, before your turn
+  rest:    0.45,   // between repetitions
+  between: 0.80,   // between units
+  level:   1.40,   // when the drill moves word -> phrase -> line -> verse
+};
+const beat = k => BEAT[k] * PACE();
+
+
+let S = null;
+function buildUnits(v, level){
+  const words = [], chunks = [], lines = [];
+  v.lines.forEach(L => {
+    L.chunks.forEach(C => {
+      C.words.forEach(w => words.push({label:w.token, sub:w.meaning, a:w.word_audio, kind:'word'}));
+      chunks.push({label:C.text, sub:'phrase', a:C.chunk_audio, kind:'phrase'});
+    });
+    if (L.line_audio) lines.push({label:L.text, sub:'line', a:L.line_audio, kind:'line'});
+  });
+  const verse = v.verse_audio
+    ? [{label:'whole verse', sub:v.lines.map(l=>l.text).join(' / '), a:v.verse_audio, kind:'verse'}] : [];
+  if (level === 'word')   return words;
+  if (level === 'chunk')  return chunks;
+  if (level === 'line')   return lines;
+  if (level === 'verse')  return verse;
+  return [...words, ...chunks, ...lines, ...verse];
+}
+function setStage(state, unit, sub, turn){
+  $('#stState').textContent = state;
+  $('#stUnit').textContent = unit;
+  $('#stSub').textContent = sub || '';
+  $('#stage').classList.toggle('turn', !!turn);
+}
+function markDue(u){
+  document.querySelectorAll('#rLines .due').forEach(e => e.classList.remove('due'));
+  if (!u || u.kind !== 'word') return;
+  const el = document.querySelector(`#rLines .w[data-key="recite:${u.a.start}"]`);
+  if (el){ el.classList.add('due'); el.scrollIntoView({block:'nearest', behavior:'smooth'}); }
+}
+const waitPaused = async () => { while (S && S.paused && !S.cancel) await sleep(80); };
+
+/** Silence for `sec`, honouring pause and stop. */
+async function hold(sec){
+  const until = performance.now() + sec * 1000;
+  while (performance.now() < until){
+    if (!S || S.cancel) return;
+    await waitPaused();
+    await sleep(30);
+  }
+}
+
+async function countdown(ms, label, unit){
+  const bar = $('#stBar'), t0 = performance.now();
+  setStage('your turn', unit.label, label, true);
+  for(;;){
+    if (!S || S.cancel) return;
+    await waitPaused();
+    const el = performance.now() - t0;
+    if (el >= ms) break;
+    bar.style.width = (100*el/ms).toFixed(1) + '%';
+    await sleep(40);
+  }
+  bar.style.width = '0%';
+}
+
+async function runSession(){
+  const reps = +$('#rReps').value, gapF = +$('#rGap').value, cumul = $('#rCumul').checked;
+  const units = buildUnits(V, $('#rLevel').value);
+  if (!units.length){ setStage('nothing to play','—','This verse has no audio.'); return endSession(); }
+
+  let lastKind = null;
+  for (let ui = 0; ui < units.length; ui++){
+    const u = units[ui], dur = u.a.end - u.a.start;
+    markDue(u);
+
+    // a longer pause when the drill steps up a level
+    if (lastKind && u.kind !== lastKind){
+      setStage('next: ' + u.kind, '·  ·  ·', `moving on to ${u.kind}s`, false);
+      await hold(beat('level'));
+      if (!S || S.cancel) return endSession();
+    }
+    lastKind = u.kind;
+
+    for (let r = 0; r < reps; r++){
+      if (!S || S.cancel) return endSession();
+      await waitPaused();
+
+      setStage(`listen · ${u.kind} ${ui+1}/${units.length} · rep ${r+1}/${reps}`,
+               u.label, u.sub, false);
+      $('#stBar').style.width = '0%';
+      await hold(beat('settle'));                       // settle into silence
+      if (!S || S.cancel) return endSession();
+
+      if (await playUnit(u.a, u.kind, `${u.kind} — ${u.label}`) === 'cancel') return endSession();
+
+      if (gapF > 0){
+        await hold(beat('breath'));                     // let it land
+        if (!S || S.cancel) return endSession();
+        cue('you');
+        await countdown(dur * gapF * 1000, 'chant it back', u);
+        if (!S || S.cancel) return endSession();
+        cue('me');
+      }
+      if (r < reps - 1) await hold(beat('rest'));       // between repetitions
+    }
+    if (ui < units.length - 1) await hold(beat('between'));
+    if (cumul && ui > 0 && (u.kind === 'word' || u.kind === 'phrase')){
+      const from = units[0].a.start, to = u.a.end;
+      if (to > from && to - from < 90){
+        setStage('build-up','from the start','everything so far', false);
+        if (await playSpan(from, to, 'build-up') === 'cancel') return endSession();
+      }
+    }
+  }
+  setStage('complete','✓','Session finished.');
+  endSession();
+}
+function startSession(){
+  S = {cancel:false, paused:false};
+  $('#rStart').disabled = true;
+  ['#rPause','#rStop','#rSkip'].forEach(s => $(s).disabled = false);
+  runSession();
+}
+function endSession(){
+  S = null;
+  $('#rStart').disabled = false;
+  ['#rPause','#rStop','#rSkip'].forEach(s => $(s).disabled = true);
+  $('#stBar').style.width = '0%'; markDue(null);
+  $('#rPause').textContent = '❚❚ Pause';
+}
+function stopSession(){
+  if (S){ S.cancel = true; stopAll(); }
+  endSession();
+  setStage('ready','—','The teacher speaks, then leaves a gap for you to repeat.');
+}
+$('#rStart').onclick = startSession;
+$('#rStop').onclick  = () => { stopSession(); };
+$('#rPause').onclick = e => {
+  if (!S) return;
+  S.paused = !S.paused;
+  if (S.paused){ pausedAt = POS(); killSrc('cancel'); paused = true; }
+  e.target.textContent = S.paused ? '▶ Resume' : '❚❚ Pause';
+};
+$('#rSkip').onclick = () => { if (S) killSrc('done'); };
+
+/* ================== QA ================== */
+let qShown = 0, qRows = [];
+async function loadMapping(){
+  if (MAP) return;
+  $('#qStats').textContent = 'loading mapping.json…';
+  try { MAP = await (await fetch('mapping.json')).json(); }
+  catch(e){ $('#qStats').textContent = 'mapping.json missing — run: python3 build_mapping.py'; return; }
+  const n = s => MAP.filter(v => v.status === s).length;
+  $('#qStats').textContent = `${MAP.length} verses · ${n('clean')} clean · ${n('weak')} need review · ${n('failed')} failed`;
+  qFilterRun();
+}
+function qFilterRun(){
+  const f = $('#qFilter').value, q = $('#qSearch').value.trim();
+  qRows = (MAP||[]).filter(v => {
+    if (q && !v.id.startsWith(q)) return false;
+    if (f === 'all') return true;
+    if (f === 'combined') return v.combined;
+    if (f === 'repeat') return (v.lines||[]).some(l => l.tokens.some(t => t.repeat));
+    return v.status === f;
+  });
+  qShown = 0; $('#qList').innerHTML = ''; qMore();
+}
+function qMore(){
+  const slice = qRows.slice(qShown, qShown + 25);
+  slice.forEach(v => $('#qList').append(qaCard(v)));
+  qShown += slice.length;
+  $('#qMore').hidden = qShown >= qRows.length;
+  $('#qMore').textContent = `Load more (${qRows.length - qShown} left)`;
+  if (!qRows.length) $('#qList').innerHTML = '<div class="hint">No verses match.</div>';
+}
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function qaCard(v){
+  const d = document.createElement('div'); d.className = 'qarow';
+  const cls = v.status==='clean' ? 'b-clean' : v.status==='weak' ? 'b-weak' : 'b-fail';
+  const h = document.createElement('div'); h.className = 'qahead';
+  h.innerHTML = `<strong>BG ${esc(v.id)}</strong>`
+    + `<span class="badge ${cls}">${v.status}</span>`
+    + (v.cost != null ? `<span class="badge b-info mono">cost ${v.cost}</span>` : '')
+    + (v.combined ? '<span class="badge b-weak">combined</span>' : '')
+    + (v.has_audio ? '<span class="badge b-clean">audio</span>' : '');
+  d.append(h);
+  (v.lines||[]).forEach(L => {
+    const r = document.createElement('div'); r.className = 'maprow';
+    L.tokens.forEach(t => {
+      const m = document.createElement('div');
+      m.className = 'mtok' + ((t.cost != null && t.cost >= 0.35) ? ' weak' : '') + (t.repeat ? ' rep' : '');
+      const marks = (t.repeat ? ' ↺' : '') + (t.fixed ? ' ✎' : '');
+      m.innerHTML = `<div class="t">${esc(t.token)}</div>`
+        + `<div class="s">← ${esc(t.synonym || '—')}${marks}</div>`
+        + `<div class="m">${esc(t.meaning || '')}</div>`;
+      if (t.cost != null) m.title = 'group cost ' + t.cost;
+      r.append(m);
+    });
+    d.append(r);
+  });
+  if (v.translation){
+    const p = document.createElement('div'); p.className = 'hint'; p.textContent = v.translation;
+    d.append(p);
+  }
+  return d;
+}
+$('#qFilter').onchange = qFilterRun;
+$('#qSearch').oninput  = qFilterRun;
+$('#qMore').onclick    = qMore;
+
+/* ================== tag editor ================== */
+const TG = { rows:[], sel:-1, env:null, envFps:100, dur:0, view:[0,0],
+             selA:null, selB:null, loop:false, dirty:false, drag:null, bdrag:null };
+const WV = $('#wave');
+
+function tgResize(){
+  const dpr = window.devicePixelRatio || 1;
+  WV.width  = Math.max(320, Math.floor(WV.clientWidth * dpr));
+  WV.height = Math.floor(150 * dpr);
+}
+
+/** Decode the mp3 and build a voice-biased envelope. A first-difference filter
+    is a cheap high-pass: it suppresses the low steady drone so the pauses
+    between words actually show up. */
+async function tgLoadWave(url){
+  const ab = await loadBuffer(url);          // already decoded for playback
+  const ch = ab.getChannelData(0), sr = ab.sampleRate;
+  const step = Math.max(1, Math.round(sr / TG.envFps));
+  const n = Math.floor(ch.length / step);
+  const env = new Float32Array(n);
+  for (let i = 0; i < n; i++){
+    let s = 0, o = i * step;
+    for (let j = 1; j < step; j++){ const d = ch[o+j] - ch[o+j-1]; s += d*d; }
+    env[i] = Math.sqrt(s / step);
+  }
+  // to dB, then subtract a low percentile so the residual bed sits near zero
+  const db = new Float32Array(n);
+  for (let i = 0; i < n; i++) db[i] = 20 * Math.log10(env[i] + 1e-9);
+  const sorted = Float32Array.from(db).sort();
+  const lo = sorted[Math.floor(n * 0.10)], hi = sorted[Math.floor(n * 0.98)];
+  for (let i = 0; i < n; i++) db[i] = Math.max(0, Math.min(1, (db[i] - lo) / (hi - lo || 1)));
+  TG.env = db; TG.dur = ab.duration;
+}
+
+const LVCOL = {word:'#c9761f', phrase:'#2b5d86', line:'#2f6b4f'};
+function tgDraw(){
+  if (!WV.width) tgResize();
+  const g = WV.getContext('2d'), W = WV.width, H = WV.height;
+  const dpr = window.devicePixelRatio || 1;
+  const css = getComputedStyle(document.body);
+  const [t0, t1] = TG.view, span = Math.max(0.05, t1 - t0);
+  const x = t => (t - t0) / span * W;
+
+  g.clearRect(0,0,W,H);
+  g.fillStyle = css.getPropertyValue('--bg') || '#fff'; g.fillRect(0,0,W,H);
+
+  // segments. With focus on (default) only the selected one is drawn, so the
+  // START/END lines you are editing are not lost among the neighbours.
+  const lanes = {word:0, phrase:1, line:2};
+  const focus = $('#tgFocus').checked && TG.sel >= 0;
+  TG.rows.forEach((r,i) => {
+    if (focus && i !== TG.sel) return;
+    const a = x(r.span.start), b = x(r.span.end);
+    if (b < 0 || a > W) return;
+    const lane = focus ? 0 : (lanes[r.level] ?? 0), lh = 15*dpr;
+    g.globalAlpha = (i === TG.sel) ? 0.30 : 0.13;
+    g.fillStyle = LVCOL[r.level]; g.fillRect(a, lane*lh, Math.max(1,b-a), lh-2*dpr);
+    g.globalAlpha = 1;
+    if (i !== TG.sel){
+      g.strokeStyle = LVCOL[r.level]; g.lineWidth = dpr;
+      g.beginPath(); g.moveTo(a,lane*lh); g.lineTo(a,H); g.moveTo(b,lane*lh); g.lineTo(b,H); g.stroke();
+    }
+    if (b-a > 34*dpr){
+      g.fillStyle = LVCOL[r.level]; g.font = `${11*dpr}px system-ui`;
+      g.fillText(r.text.slice(0,22), a+3*dpr, lane*lh+11*dpr);
+    }
+  });
+
+  // the selected segment's two handles, drawn last and boldly
+  const cur = TG.rows[TG.sel];
+  if (cur){
+    [['start', cur.span.start, '--ok'], ['end', cur.span.end, '--info']].forEach(([w,t,c]) => {
+      const p = x(t);
+      if (p < -20 || p > W+20) return;
+      const col = css.getPropertyValue(c);
+      g.strokeStyle = col; g.lineWidth = (TG.bdrag === w ? 4 : 2.5)*dpr;
+      g.beginPath(); g.moveTo(p,0); g.lineTo(p,H); g.stroke();
+      g.fillStyle = col;
+      const lw = 40*dpr, lh2 = 15*dpr, lx = (w==='start') ? p : p-lw;
+      g.fillRect(lx, 0, lw, lh2);
+      g.fillStyle = '#fff'; g.font = `bold ${10*dpr}px system-ui`;
+      g.fillText(w.toUpperCase(), lx+4*dpr, 11*dpr);
+    });
+  }
+
+  // envelope
+  if (TG.env){
+    const base = 48*dpr, h = H - base - 4*dpr;
+    g.beginPath(); g.moveTo(0, H);
+    for (let px = 0; px < W; px++){
+      const ta = t0 + span*px/W, tb = t0 + span*(px+1)/W;
+      let m = 0;
+      for (let k = Math.floor(ta*TG.envFps); k < Math.ceil(tb*TG.envFps); k++)
+        if (k >= 0 && k < TG.env.length && TG.env[k] > m) m = TG.env[k];
+      g.lineTo(px, H - m*h);
+    }
+    g.lineTo(W, H); g.closePath();
+    g.fillStyle = css.getPropertyValue('--muted') || '#888';
+    g.globalAlpha = .40; g.fill(); g.globalAlpha = 1;
+  }
+
+  // selection
+  if (TG.selA != null && TG.selB != null){
+    const a = x(Math.min(TG.selA,TG.selB)), b = x(Math.max(TG.selA,TG.selB));
+    g.fillStyle = css.getPropertyValue('--accent') || '#a8471b';
+    g.globalAlpha = .18; g.fillRect(a, 0, Math.max(1,b-a), H); g.globalAlpha = 1;
+    g.strokeStyle = css.getPropertyValue('--accent'); g.lineWidth = 1.5*dpr;
+    g.beginPath(); g.moveTo(a,0); g.lineTo(a,H); g.moveTo(b,0); g.lineTo(b,H); g.stroke();
+  }
+
+  // playhead
+  const px = x(POS());
+  if (px >= 0 && px <= W){
+    g.strokeStyle = css.getPropertyValue('--live') || '#c9761f'; g.lineWidth = 2*dpr;
+    g.beginPath(); g.moveTo(px,0); g.lineTo(px,H); g.stroke();
+  }
+
+  // time ruler
+  g.fillStyle = css.getPropertyValue('--muted'); g.font = `${10*dpr}px system-ui`;
+  const stepT = span > 30 ? 5 : span > 10 ? 2 : span > 4 ? 1 : 0.5;
+  for (let t = Math.ceil(t0/stepT)*stepT; t < t1; t += stepT){
+    const p = x(t);
+    g.globalAlpha = .35; g.fillRect(p, H-9*dpr, 1, 9*dpr); g.globalAlpha = 1;
+    g.fillText(t.toFixed(stepT<1?1:0)+'s', p+2*dpr, H-11*dpr);
+  }
+}
+
+function tgTime(ev){
+  const r = WV.getBoundingClientRect();
+  const f = (ev.clientX - r.left) / r.width;
+  const [t0,t1] = TG.view;
+  return Math.max(0, Math.min(TG.dur, t0 + f*(t1-t0)));
+}
+function nearHandle(t){
+  const r = TG.rows[TG.sel]; if (!r) return null;
+  const perPx = (TG.view[1]-TG.view[0]) / WV.getBoundingClientRect().width;
+  const tol = perPx * 7;
+  if (Math.abs(t - r.span.start) <= tol) return 'start';
+  if (Math.abs(t - r.span.end)   <= tol) return 'end';
+  return null;
+}
+WV.addEventListener('pointermove', e => {
+  if (TG.drag == null && TG.bdrag == null){ WV.style.cursor = nearHandle(tgTime(e)) ? 'ew-resize' : 'crosshair'; }
+  if (TG.bdrag){
+    const r = TG.rows[TG.sel], t = tgTime(e);
+    if (TG.bdrag === 'start') r.span.start = Math.min(t, r.span.end - 0.03);
+    else                      r.span.end   = Math.max(t, r.span.start + 0.03);
+    tgBndVals(); tgDraw(); return;
+  }
+  if (TG.drag == null) return;
+  TG.selB = tgTime(e); tgSelInfo(); tgDraw();
+});
+WV.addEventListener('pointerdown', e => {
+  WV.setPointerCapture(e.pointerId);
+  const t = tgTime(e), h = nearHandle(t);
+  if (h){ TG.bdrag = h; tgDraw(); return; }
+  TG.drag = t; TG.selA = t; TG.selB = null; tgDraw();
+});
+WV.addEventListener('pointerup', e => {
+  const t = tgTime(e);
+  if (TG.bdrag){
+    const r = TG.rows[TG.sel];
+    r.span.start = +r.span.start.toFixed(3); r.span.end = +r.span.end.toFixed(3);
+    r.dirty = true; TG.dirty = true; TG.bdrag = null;
+    if (V) V._touched = true;
+    tgRender(); return;
+  }
+  if (TG.drag != null && Math.abs(t - TG.drag) < 0.02){    // a click, not a drag
+    TG.selA = TG.selB = null; stopAll(); pausedAt = t;
+  } else { TG.selB = t; }
+  TG.drag = null; tgSelInfo(); tgDraw();
+});
+function tgSelInfo(){
+  if (TG.selA == null || TG.selB == null){ $('#wSelInfo').textContent = 'no selection'; return; }
+  const a = Math.min(TG.selA,TG.selB), b = Math.max(TG.selA,TG.selB);
+  $('#wSelInfo').textContent = `${a.toFixed(3)} → ${b.toFixed(3)}  (${(b-a).toFixed(3)}s)`;
+}
+function tgSel(){
+  if (TG.selA == null || TG.selB == null) return null;
+  return [Math.min(TG.selA,TG.selB), Math.max(TG.selA,TG.selB)];
+}
+
+function tgZoom(f){
+  const [t0,t1] = TG.view, p = POS(), c = (p >= t0 && p <= t1) ? p : (t0+t1)/2;
+  let w = (t1-t0)*f; w = Math.max(0.4, Math.min(TG.dur, w));
+  TG.view = [Math.max(0, c-w/2), Math.min(TG.dur, c+w/2)];
+  if (TG.view[1]-TG.view[0] < w) TG.view[0] = Math.max(0, TG.view[1]-w);
+  tgDraw();
+}
+$('#wZoomIn').onclick  = () => tgZoom(0.55);
+$('#wZoomOut').onclick = () => tgZoom(1.8);
+$('#wFit').onclick     = () => { TG.view = [0, TG.dur]; tgDraw(); };
+WV.addEventListener('wheel', e => { e.preventDefault(); tgZoom(e.deltaY > 0 ? 1.2 : 0.83); },
+                    {passive:false});
+
+$('#wPlaySel').onclick = async () => {
+  const s = tgSel(); if (!s) return;
+  do { if (await playSpan(s[0], s[1], 'selection') === 'cancel') return; }
+  while (TG.loop);
+};
+$('#wLoopSel').onclick = e => {
+  TG.loop = !TG.loop;
+  e.target.style.borderColor = TG.loop ? 'var(--accent)' : '';
+  e.target.textContent = TG.loop ? '↻ looping' : '↻ loop selection';
+};
+
+/* ---- rows ---- */
+function tgBuild(){
+  TG.rows = [];
+  if (!V) return;
+  V.lines.forEach((L, li) => {
+    if (L.line_audio)
+      TG.rows.push({level:'line', text:L.text, span:L.line_audio, path:`L${li}`});
+    L.chunks.forEach((C, ci) => {
+      TG.rows.push({level:'phrase', text:C.text, span:C.chunk_audio, path:`L${li}.C${ci}`});
+      C.words.forEach((w, wi) =>
+        TG.rows.push({level:'word', text:w.token, span:w.word_audio,
+                      meaning:w.meaning, path:`L${li}.C${ci}.W${wi}`}));
+    });
+  });
+  TG.rows.sort((a,b) => a.span.start - b.span.start);
+}
+function tgTable(){
+  const f = $('#tgLevel').value;
+  const t = document.createElement('table'); t.className = 'tg';
+  t.innerHTML = '<thead><tr><th>level</th><th>text</th><th>start</th><th>end</th>'
+    + '<th>dur</th><th title="silence before the next segment at this level">gap</th>'
+    + '<th>play</th></tr></thead>';
+  const tb = document.createElement('tbody');
+  TG.rows.forEach((r,i) => {
+    if (f !== 'all' && r.level !== f) return;
+    const tr = document.createElement('tr');
+    if (i === TG.sel) tr.className = 'sel';
+    if (r.dirty) tr.className += ' dirty';
+    const d = r.span.end - r.span.start;
+    // gap to the next segment at the same level: a near-zero gap means no
+    // detectable boundary, so the cut between the two words is guesswork
+    const nxt = TG.rows.find((o,j) => j > i && o.level === r.level);
+    const gap = nxt ? nxt.span.start - r.span.end : null;
+    if (d <= 0.12) tr.className += ' warnrow';
+    if (gap !== null && gap < 0.05) tr.className += ' tightrow';
+    tr.innerHTML = `<td><span class="lv">${r.level}</span></td>`
+      + `<td class="txt">${esc(r.text)}</td>`
+      + `<td class="num">${r.span.start.toFixed(3)}</td>`
+      + `<td class="num">${r.span.end.toFixed(3)}</td>`
+      + `<td class="num">${d.toFixed(3)}</td>`
+      + `<td class="num">${gap === null ? '—' : (gap*1000).toFixed(0) + ' ms'}</td>`
+      + `<td></td>`;
+    tr.onclick = () => { TG.sel = i; tgRender();
+      TG.view = zoomTo(r.span); tgDraw(); };
+    const pb = document.createElement('button');
+    pb.textContent = '▶'; pb.style.padding = '2px 8px';
+    pb.onclick = ev => { ev.stopPropagation(); TG.sel = i; tgRender();
+      playUnit(r.span, r.level, `${r.level} — ${r.text}`); };
+    tr.lastElementChild.append(pb);
+    tb.append(tr);
+  });
+  t.append(tb);
+  $('#tgList').innerHTML = ''; $('#tgList').append(t);
+}
+function zoomTo(span){
+  const pad = Math.max(0.6, (span.end - span.start) * 0.9);
+  return [Math.max(0, span.start - pad), Math.min(TG.dur, span.end + pad)];
+}
+function tgRender(){ tgTable(); tgDraw(); tgBndVals(); tgStatus(); tgProgress(); }
+function tgStatus(msg, bad){
+  const el = $('#tgStatus');
+  if (msg){ el.textContent = msg; el.style.color = bad ? 'var(--accent)' : 'var(--ok)'; return; }
+  const n = TG.rows.filter(r => r.dirty).length;
+  el.style.color = '';
+  el.textContent = n ? `${n} segment${n>1?'s':''} edited — not saved yet` : 'no unsaved edits';
+}
+
+function tgCur(){ return TG.rows[TG.sel] || null; }
+function tgEdit(fn){
+  const r = tgCur();
+  if (!r) return tgStatus('pick a segment in the table first', true);
+  fn(r.span);
+  if (r.span.end <= r.span.start) r.span.end = r.span.start + 0.05;
+  r.span.start = Math.max(0, +r.span.start.toFixed(3));
+  r.span.end   = Math.min(TG.dur || 1e9, +r.span.end.toFixed(3));
+  r.dirty = true; TG.dirty = true; if (V) V._touched = true;
+  tgRender();
+}
+$('#tgSetStart').onclick = () => { const s = tgSel(); if (s) tgEdit(sp => sp.start = s[0]); };
+$('#tgSetEnd').onclick   = () => { const s = tgSel(); if (s) tgEdit(sp => sp.end   = s[1]); };
+document.querySelectorAll('[data-nudge]').forEach(b => b.onclick = () => {
+  const m = b.dataset.nudge.match(/^([se])(-?\d+)$/);
+  const d = (+m[2])/1000;
+  tgEdit(sp => { if (m[1] === 's') sp.start += d; else sp.end += d; });
+  hearBoundary(m[1] === 's' ? 'start' : 'end');     // re-audition after nudging
+});
+
+/* Play a short window straddling one boundary and zoom the waveform to it, so
+   you can hear whether the cut lands on the voice rather than guessing. */
+const HEAR_LEAD = 0.45, HEAR_TAIL = 0.55;
+function hearBoundary(which){
+  const r = tgCur(); if (!r) return;
+  const t = (which === 'start') ? r.span.start : r.span.end;
+  const a = Math.max(0, t - (which === 'start' ? HEAR_LEAD : HEAR_TAIL));
+  const b = Math.min(TG.dur || 1e9, t + (which === 'start' ? HEAR_TAIL : HEAR_LEAD));
+  TG.view = [Math.max(0, t - 1.4), Math.min(TG.dur || 1e9, t + 1.4)];
+  tgDraw();
+  playSpan(a, b, `${which} of “${r.text}”`);
+}
+$('#tgHearStart').onclick = () => hearBoundary('start');
+$('#tgHearEnd').onclick   = () => hearBoundary('end');
+$('#tgPlayWhole').onclick = () => { const r = tgCur(); if (r) playSpan(r.span.start, r.span.end, r.text); };
+$('#tgPlayPad').onclick   = () => { const r = tgCur(); if (r) playUnit(r.span, r.level, r.text); };
+$('#tgFocus').onchange    = tgDraw;
+
+function tgStep(d){
+  const f = $('#tgLevel').value;
+  const idx = TG.rows.map((r,i) => i).filter(i => f === 'all' || TG.rows[i].level === f);
+  if (!idx.length) return;
+  const at = idx.indexOf(TG.sel);
+  TG.sel = idx[Math.max(0, Math.min(idx.length - 1, (at < 0 ? 0 : at + d)))];
+  const r = tgCur(); if (r) TG.view = zoomTo(r.span);
+  tgRender();
+}
+$('#tgPrev').onclick = () => tgStep(-1);
+$('#tgNext').onclick = () => tgStep(1);
+
+/* boundary readout */
+function tgBndVals(){
+  const r = tgCur();
+  $('#tgStartVal').textContent = r ? r.span.start.toFixed(3) + 's' : '—';
+  $('#tgEndVal').textContent   = r ? r.span.end.toFixed(3) + 's'   : '—';
+  $('#tgWho').innerHTML = r
+    ? `<b>${esc(r.text)}</b> <span class="lv">${r.level}</span>`
+      + `<div class="muted">${(r.span.end - r.span.start).toFixed(3)}s`
+      + (r.meaning ? ' · ' + esc(r.meaning) : '') + '</div>'
+    : 'Pick a segment from the list below.';
+}
+
+/* keyboard: arrows nudge, space auditions, j/k step through segments */
+document.addEventListener('keydown', e => {
+  if ($('#t-tag').hidden) return;
+  if (/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+  const big = e.shiftKey ? 100 : 20;
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowRight'){
+    const d = (e.key === 'ArrowLeft' ? -big : big)/1000;
+    const which = e.altKey ? 'end' : 'start';
+    tgEdit(sp => { if (which === 'start') sp.start += d; else sp.end += d; });
+    e.preventDefault(); return;
+  }
+  if (e.key === '[') { hearBoundary('start'); e.preventDefault(); }
+  if (e.key === ']') { hearBoundary('end');   e.preventDefault(); }
+  if (e.key === 'j') { tgStep(1);  e.preventDefault(); }
+  if (e.key === 'k') { tgStep(-1); e.preventDefault(); }
+});
+
+/* ---- save ---- */
+$('#saveLocal').onclick = async () => {
+  tgStatus('saving…');
+  try{
+    const payload = saveSet();
+    const res = await fetch('api/save', {method:'POST',
+      headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    const j = await res.json();
+    if (!j.ok) return tgStatus('save failed: ' + j.error, true);
+    afterSave(payload);
+    tgStatus(`saved ${j.verses} verses at ${j.saved}`);
+  }catch(e){
+    tgStatus('save failed — is server.py running? (' + e.message + ')', true);
+  }
+};
+/* Building a benchmark means promoting verses into data.json, including ones
+   the model already got right. Editing marks a verse touched; this does the
+   same without requiring a pointless nudge. */
+$('#tgAccept').onclick = () => {
+  if (!V) return;
+  if (!V.auto) return tgStatus('already in the verified set');
+  V._touched = true;
+  tgStatus(`“BG ${V.id}” marked verified — save to write it into data.json`);
+  tgProgress();
+};
+$('#tgNextUnverified').onclick = () => {
+  const handIds = new Set(HAND.map(v => v.id));
+  const at = DATA.findIndex(v => v.id === V?.id);
+  for (let k = 1; k <= DATA.length; k++){
+    const v = DATA[(at + k + DATA.length) % DATA.length];
+    if (v.auto && !handIds.has(v.id) && !v._touched){
+      $('#verseSel').value = DATA.indexOf(v);
+      render(v); tgInit();
+      return;
+    }
+  }
+  tgStatus('nothing unverified left in this list');
+};
+function tgProgress(){
+  const handIds = new Set(HAND.map(v => v.id));
+  const done = DATA.filter(v => handIds.has(v.id) || v._touched).length;
+  $('#tgProgress').textContent = `${done} of ${DATA.length} verses verified`;
+}
+
+/* data.json is the VERIFIED set. Auto-split verses live in auto_data.json and
+   are only copied across once you have actually touched their boundaries, so
+   saving never dumps 258 machine guesses into the curated file. */
+function saveSet(){
+  const handIds = new Set(HAND.map(v => v.id));
+  const out = HAND.map(v => strip(v));
+  DATA.forEach(v => {
+    if (!v.auto || handIds.has(v.id) || !v._touched) return;
+    const c = strip(v);
+    c.auto = false; c.source = 'auto-split + manual review';
+    out.push(c);
+  });
+  out.sort((a,b) => (+a.chapter - +b.chapter) || (parseInt(a.shloka) - parseInt(b.shloka)));
+  return out;
+}
+function strip(v){
+  const c = {};
+  for (const k in v) if (k[0] !== '_') c[k] = v[k];
+  return c;
+}
+function afterSave(saved){
+  HAND = saved;
+  DATA.forEach(v => { if (v._touched && v.auto) v.auto = false; delete v._touched; });
+  TG.rows.forEach(r => r.dirty = false); TG.dirty = false;
+  tgRender();
+}
+
+/* ---- commit data.json straight into the repo, so a hosted tagger persists ---- */
+const GH = {
+  get repo(){ return localStorage.getItem('gh.repo') || ''; },
+  get branch(){ return localStorage.getItem('gh.branch') || 'main'; },
+  get path(){ return localStorage.getItem('gh.path') || 'poc/data.json'; },
+  get token(){ return localStorage.getItem('gh.token') || ''; },
+};
+function ghLoadCfg(){
+  $('#ghRepo').value = GH.repo; $('#ghBranch').value = GH.branch;
+  $('#ghPath').value = GH.path; $('#ghToken').value = GH.token;
+}
+$('#ghSaveCfg').onclick = () => {
+  localStorage.setItem('gh.repo', $('#ghRepo').value.trim());
+  localStorage.setItem('gh.branch', $('#ghBranch').value.trim() || 'main');
+  localStorage.setItem('gh.path', $('#ghPath').value.trim() || 'poc/data.json');
+  localStorage.setItem('gh.token', $('#ghToken').value.trim());
+  tgStatus('GitHub settings saved in this browser');
+};
+$('#ghClear').onclick = () => {
+  localStorage.removeItem('gh.token'); $('#ghToken').value = '';
+  tgStatus('token forgotten');
+};
+ghLoadCfg();
+function b64utf8(str){
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000)
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+$('#saveGh').onclick = async () => {
+  if (!GH.repo || !GH.token){ $('#ghBox').open = true; return tgStatus('set repo and token first', true); }
+  const api = `https://api.github.com/repos/${GH.repo}/contents/${GH.path}`;
+  const head = {Authorization: 'Bearer ' + GH.token, Accept: 'application/vnd.github+json'};
+  tgStatus('committing…');
+  try{
+    let sha;
+    const cur = await fetch(`${api}?ref=${encodeURIComponent(GH.branch)}`, {headers: head});
+    if (cur.status === 200) sha = (await cur.json()).sha;
+    else if (cur.status !== 404) throw new Error('read failed: HTTP ' + cur.status);
+
+    const body = {
+      message: `tag: update ${GH.path} (${TG.rows.filter(r=>r.dirty).length} edits)`,
+      content: b64utf8(JSON.stringify(saveSet(), null, 1)),
+      branch: GH.branch,
+    };
+    if (sha) body.sha = sha;
+    const put = await fetch(api, {method:'PUT', headers: head, body: JSON.stringify(body)});
+    if (!put.ok){
+      const j = await put.json().catch(() => ({}));
+      throw new Error(j.message || ('HTTP ' + put.status));
+    }
+    afterSave(saveSet());
+    tgStatus('committed to ' + GH.repo + '@' + GH.branch);
+  }catch(e){
+    tgStatus('commit failed: ' + e.message, true);
+  }
+};
+
+$('#tgDownload').onclick = () => {
+  const b = new Blob([JSON.stringify(saveSet(), null, 1)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(b); a.download = 'data.json'; a.click();
+  URL.revokeObjectURL(a.href);
+};
+$('#tgRevert').onclick = async () => {
+  if (TG.dirty && !confirm('Discard unsaved edits and reload data.json?')) return;
+  const d = await (await fetch('data.json?v=' + Date.now())).json();
+  DATA = d;
+  const i = Math.max(0, DATA.findIndex(x => x.id === V.id));
+  $('#verseSel').value = i; render(DATA[i]); await tgInit(true);
+  tgStatus('reloaded from disk');
+};
+$('#tgLevel').onchange = tgRender;
+
+let tgAudioKey = null;
+async function tgInit(force){
+  tgResize();
+  if (force || tgAudioKey !== V._url){
+    tgStatus('decoding audio…');
+    try { await tgLoadWave(V._url); tgAudioKey = V._url; TG.view = [0, TG.dur]; }
+    catch(e){ tgStatus('could not decode audio: ' + e.message, true); }
+  }
+  tgBuild(); TG.sel = TG.sel >= 0 && TG.sel < TG.rows.length ? TG.sel : -1;
+  tgRender();
+}
+window.addEventListener('resize', () => { if (!$('#t-tag').hidden){ tgResize(); tgDraw(); } });
+
+
+/* ================== boot ================== */
+let HAND = [], AUTO = null;
+
+/* Lower = needs attention sooner. Cross-model disagreement outranks any
+   single model's own confidence, which we know can be blind to broken spans. */
+function rank(v){
+  const c = CONS && CONS[v.id];
+  if (c) return c.agree;
+  return (v.review_score ?? v.confidence ?? 2);
+}
+
+function fillSelect(keepId){
+  const sel = $('#verseSel');
+  if ($('#vOrder').value === 'review')
+    DATA.sort((a,b) => rank(a) - rank(b));
+  else
+    DATA.sort((a,b) => (+a.chapter - +b.chapter) || (parseInt(a.shloka) - parseInt(b.shloka)));
+  sel.innerHTML = '';
+  DATA.forEach((v,i) => {
+    const o = document.createElement('option');
+    o.value = i;
+    const c = CONS && CONS[v.id];
+    o.textContent = `BG ${v.id}` + (v.auto
+      ? `  · ${v.aligner || 'dsp'}`
+        + (c ? `  · agree ${Math.round(c.agree*100)}%` : ` ${Math.round((v.review_score ?? v.confidence)*100)}%`)
+        + (v.suspect_words ? `  · ${v.suspect_words}!` : '')
+      : '  · hand');
+    sel.append(o);
+  });
+  const at = Math.max(0, DATA.findIndex(v => v.id === keepId));
+  sel.value = at;
+  return DATA[at];
+}
+
+const SRC = {mms:      {file:'aligned_data.json',  data:null},
+             sushrota: {file:'sushrota_data.json', data:null},
+             dsp:      {file:'auto_data.json',     data:null}};
+/* Two aligners that share no architecture, training data or tokeniser. Where
+   they place a boundary identically it is very likely right; where they diverge
+   something is wrong. With only two loose hand-tagged verses this is the best
+   quality signal available, so it drives the review order. */
+let CONS = null;
+fetch('consensus.json').then(r => r.json())
+  .then(j => { CONS = Object.fromEntries(j.map(r => [r.id, r])); })
+  .catch(() => {});
+async function setAuto(which){
+  const keep = V ? V.id : null;
+  const handIds = new Set(HAND.map(v => v.id));
+  let extra = [];
+  if (which !== 'none'){
+    const s = SRC[which];
+    if (!s.data){
+      $('#autoN').textContent = 'loading ' + s.file + '…';
+      try { s.data = await (await fetch(s.file)).json(); }
+      catch(e){ $('#autoN').textContent = s.file + ' not built'; $('#autoSrc').value='none'; return; }
+    }
+    extra = s.data.filter(v => !handIds.has(v.id));
+    const c = extra.map(v => v.confidence).sort((a,b)=>a-b);
+    $('#autoN').textContent = `${extra.length} verses · median confidence `
+      + (c.length ? c[c.length>>1].toFixed(2) : '—');
+  } else $('#autoN').textContent = '';
+  DATA = [...HAND, ...extra];
+  render(fillSelect(keep));
+}
+$('#autoSrc').onchange = e => setAuto(e.target.value);
+$('#vOrder').onchange = () => render(fillSelect(V ? V.id : null));
+
+fetch('api/audio').then(r => { SERVER = r.ok; }).catch(() => { SERVER = false; })
+ .finally(() => {
+  $('#saveLocal').disabled = !SERVER;
+  $('#saveLocal').title = SERVER ? '' : 'Needs server.py — not available on a static host';
+ });
+
+fetch('data.json').then(r => r.json()).then(async d => {
+  HAND = d; DATA = [...d];
+  const sel = $('#verseSel');
+  sel.onchange = () => render(DATA[sel.value]);
+  render(fillSelect(d[0].id));
+  // start on the MMS alignment when it exists — that is what you are correcting
+  if ((await fetch('aligned_data.json', {method:'HEAD'}).catch(() => ({ok:false}))).ok){
+    $('#autoSrc').value = 'mms';
+    await setAuto('mms');
+  }
+  $('#rHint').textContent = 'Only verses with tagged audio can be recited. '
+    + 'The Mapping QA tab covers all 657 verses (text only).';
+}).catch(() => {
+  $('#hint').textContent = 'Could not load data.json — serve this folder over http '
+    + '(python3 -m http.server 8000).';
+});
+</script>
+</body>
+</html>
