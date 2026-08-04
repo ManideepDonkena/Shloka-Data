@@ -187,9 +187,24 @@ def _span_ok(s):
 
 
 if __name__ == "__main__":
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
-    srv = HTTPServer(("127.0.0.1", port), Handler)
+    args = [a for a in sys.argv[1:] if a != "--lan"]
+    port = int(args[0]) if args else 8765
+    # Loopback by default: /api/save writes to disk, so this is not something
+    # to expose casually. --lan opens it to the local network, which is how you
+    # test the phone layout on a real phone.
+    host = "0.0.0.0" if "--lan" in sys.argv else "127.0.0.1"
+    srv = HTTPServer((host, port), Handler)
     print(f"Shloka POC  ->  http://localhost:{port}/   (ctrl-c to stop)")
+    if host == "0.0.0.0":
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(("8.8.8.8", 80)); lan = s.getsockname()[0]
+        except OSError:
+            lan = "<this machine's IP>"
+        finally:
+            s.close()
+        print(f"  on your phone   ->  http://{lan}:{port}/   (same wi-fi)")
     print(f"  static  {ROOT}\n  audio   {BRAJA}")
     try:
         srv.serve_forever()

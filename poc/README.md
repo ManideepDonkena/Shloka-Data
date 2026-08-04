@@ -200,6 +200,14 @@ for two reasons: it serves **HTTP byte ranges**, without which the browser
 cannot seek media, and it exposes `POST /api/save` so the Tag editor can write
 `data.json` back to disk with a backup.
 
+To try the phone layout on an actual phone, add `--lan` — it binds all
+interfaces and prints the URL to open on a device on the same wi-fi. It is
+loopback-only by default because `/api/save` writes to disk.
+
+```bash
+python3 server.py --lan       # → http://192.168.x.x:8765/
+```
+
 All the generated JSON is committed, so the app is fully usable immediately —
 you only need what follows if you want to *regenerate* it.
 
