@@ -2,12 +2,12 @@
 poc/data.json-schema entries (verse_audio / lines / chunks / words with word_audio) so the existing
 Shloka-Data app, with its highlighting, can play them as a "TTS" source.
 Usage: assemble_align.py PAD_DIR OUT_DIR   ->  OUT_DIR/<id>.wav, OUT_DIR/tts_data.json"""
-import json, os, re, sys, glob
+import json, os, re, sys, glob, subprocess
 import numpy as np, soundfile as sf, torch, torchaudio
 POC = os.environ.get("POC", "/home/mani/shloka/Shloka-Data/poc"); sys.path.insert(0, POC)
 from align_mms import romanize
 PADS, OUT = sys.argv[1], sys.argv[2]; os.makedirs(OUT, exist_ok=True)
-SR = 24000; GAP = 0.55
+SR = 24000; GAP = 0.55; FFMPEG = os.environ.get("FFMPEG", "ffmpeg")
 mapping = {m["id"]: m for m in json.load(open(f"{POC}/mapping.json"))}
 bundle = torchaudio.pipelines.MMS_FA; dev = "cuda" if torch.cuda.is_available() else "cpu"
 model = bundle.get_model().eval().to(dev); tok = bundle.get_tokenizer(); aligner = bundle.get_aligner()
@@ -25,7 +25,8 @@ for vid in ids:
         a, sr = sf.read(p); assert sr == SR
         if i: wav.append(np.zeros(int(GAP * SR))); t += GAP
         halves.append((t, t + len(a) / SR)); wav.append(a); t += len(a) / SR
-    audio = np.concatenate(wav); sf.write(f"{OUT}/{vid}.wav", audio, SR)
+    audio = np.concatenate(wav); tmp = f"{OUT}/{vid}.tmp.wav"; sf.write(tmp, audio, SR)
+    subprocess.run([FFMPEG, "-y", "-loglevel", "error", "-i", tmp, "-ac", "1", "-b:a", "56k", f"{OUT}/{vid}.mp3"], check=True); os.remove(tmp)
     m = mapping[vid]
     toks, line_of = [], []
     for li, ln in enumerate(l for l in m["lines"] if not l["text"].strip().endswith("uvāca")):
@@ -34,13 +35,20 @@ for vid in ids:
     # cross-line sandhi: the source marks a word split across a half-verse break with "-"
     # (kadāci- / nnāyaṁ). Rendered audio says "kadāci" + "nnāyaṁ", so move the final consonant
     # of the last token before the break onto the front of the first token after it.
-    dl = [l.strip() for l in m["sanskrit"].split("\n") if l.strip() and not l.strip().endswith("उवाच")]
-    for h, l in enumerate(dl[:-1]):
-        if l.rstrip(" ।॥").endswith("-"):
-            prev = max(i for i, x in enumerate(line_of) if x // 2 == h); nxt = min(i for i, x in enumerate(line_of) if x // 2 == h + 1)
-            c = texts[prev][-1]
-            if texts[nxt].startswith(c) and not texts[prev][-1] in "aeiou":
-                texts[prev] = texts[prev][:-1]; texts[nxt] = c + texts[nxt]
+    # Cross-line sandhi: a Devanagari line ending in "-" splits one word (kadāci- / nnāyaṁ). The chant says
+    # "kadāci" + "nnāyaṁ", so move the final consonant of the token before the break to the front of the next.
+    raw = [l.strip() for l in m["sanskrit"].split("\n") if l.strip() and not l.strip().endswith("उवाच")]
+    n_words, brk = 0, []
+    for l in raw:
+        t = re.sub(r"॥.*?॥", "", l); t = re.sub(r"[।|॥]", " ", t)
+        n_words += len([w for w in t.replace("-", " ").split()])
+        if l.rstrip(" ।॥").endswith("-"): brk.append(n_words)
+    if n_words == len(toks):
+        for cut in brk:
+            if 0 < cut < len(toks):
+                prev, nxt = cut - 1, cut; c = texts[prev][-1:]
+                if c and c not in "aeiou" and texts[nxt].startswith(c):
+                    texts[prev] = texts[prev][:-1]; texts[nxt] = c + texts[nxt]
     keep = [i for i, w in enumerate(texts) if w]
     w16 = torchaudio.functional.resample(torch.tensor(audio, dtype=torch.float32)[None], SR, 16000).to(dev)
     with torch.inference_mode():
@@ -50,6 +58,21 @@ for vid in ids:
     for i, sp in zip(keep, spans):
         W[i] = {"start": round(sp[0].start * ratio, 3), "end": round(sp[-1].end * ratio, 3),
                 "score": round(float(np.mean([s.score for s in sp])), 3)}
+    # CTC puts a word's end at its last sounded character, but a chanted word keeps ringing (long final vowels).
+    # So let each word run on until the next word's onset (or the end of its half-verse clip).
+    PRE = 0.03
+    hof = lambda t: next((k for k, (a, b) in enumerate(halves) if t < b + GAP / 2), len(halves) - 1)
+    order = sorted(W, key=lambda i: W[i]["start"])
+    for i in W: W[i]["raw_dur"] = W[i]["end"] - W[i]["start"]
+    for n, i in enumerate(order):
+        s0, h = W[i]["start"], hof(W[i]["start"])
+        same_next = n + 1 < len(order) and hof(W[order[n + 1]]["start"]) == h
+        same_prev = n > 0 and hof(W[order[n - 1]]["start"]) == h
+        end = min(max(W[i]["end"], W[order[n + 1]]["start"] - PRE), W[order[n + 1]]["start"]) if same_next else max(W[i]["end"], halves[h][1])
+        W[i]["start"] = round(min(s0, W[order[n - 1]]["end"]) if same_prev else max(halves[h][0], s0 - PRE), 3)
+        W[i]["end"] = round(end, 3)
+    for a_, b_ in zip(order, order[1:]):        # never let a word overlap the next one
+        if W[a_]["end"] > W[b_]["start"]: W[a_]["end"] = W[b_]["start"]
     lines, synonyms, seen = [], [], set()
     for li in range(max(line_of) + 1):
         idx = [i for i in range(len(toks)) if line_of[i] == li and i in W]
@@ -58,7 +81,7 @@ for vid in ids:
             tk = toks[i]
             words.append({"token": tk["token"], "synonym": tk.get("synonym"), "meaning": tk.get("meaning"),
                           "word_audio": {"start": W[i]["start"], "end": W[i]["end"]}, "score": W[i]["score"],
-                          "exact": True, "suspect": W[i]["score"] < 0.5 or (W[i]["end"] - W[i]["start"]) < 0.06})
+                          "exact": True, "suspect": W[i]["score"] < 0.5 or W[i]["raw_dur"] < 0.06})
             if tk.get("synonym") and tk["synonym"] not in seen:
                 seen.add(tk["synonym"]); synonyms.append({"key": tk["synonym"], "meaning": tk.get("meaning")})
         if not words: continue
@@ -67,7 +90,7 @@ for vid in ids:
                       "chunks": [{"text": " ".join(w["token"] for w in words), "chunk_audio": la,
                                   "split_method": "tts", "words": words}]})
     allw = [w for l in lines for c in l["chunks"] for w in c["words"]]
-    res.append({"id": vid, "chapter": m["chapter"], "shloka": m["shloka"], "audio": f"audio-tts/{vid}.wav",
+    res.append({"id": vid, "chapter": m["chapter"], "shloka": m["shloka"], "audio": f"audio-tts/{vid}.mp3",
                 "sanskrit": m["sanskrit"], "translation": m["translation"], "auto": True, "aligner": "tts-mms",
                 "confidence": round(float(np.mean([w["score"] for w in allw])), 3),
                 "suspect_words": sum(w["suspect"] for w in allw),
