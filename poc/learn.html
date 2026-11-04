@@ -24,13 +24,13 @@ select{padding:8px 10px;border-radius:12px;border:1px solid var(--line);backgrou
 .meta .ref{font:600 1.05rem Fraunces,Georgia,serif}.meta small{display:block;font:400 .78rem "DM Sans";color:var(--muted)}
 .chip{border:1px solid var(--line);background:var(--cream);border-radius:999px;padding:5px 12px;font-size:.88rem}
 .chip.on{background:var(--gold);border-color:var(--gold);color:#183b45;font-weight:600}
-.block{background:var(--card);border:2px solid transparent;border-radius:20px;padding:10px 6px;box-shadow:var(--shadow)}
-.half+.half{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
-.half{border-radius:14px;border:2px solid transparent;padding:2px 0}
-.line{display:flex;align-items:center;gap:6px;border-radius:14px;padding:2px 6px;border:2px solid transparent}
-.num{flex:none;width:20px;height:20px;border-radius:50%;background:var(--cream);color:var(--muted);font-size:.7rem;display:grid;place-items:center}
-.ws{flex:1;display:flex;flex-wrap:wrap;justify-content:center;gap:2px 0}
-.iw{display:flex;flex-direction:column;align-items:center;text-align:center;padding:5px 7px;border-radius:12px;cursor:pointer;border:2px solid transparent;max-width:128px}
+.block{background:var(--card);border:2px solid transparent;border-radius:20px;padding:10px 10px;box-shadow:var(--shadow)}
+.half+.half{margin-top:12px;border-top:1px dashed var(--line);padding-top:12px}
+.half{border-radius:14px;border:2px solid transparent;padding:2px 0;display:grid;gap:4px}
+.line{display:grid;grid-template-columns:26px minmax(0,1fr);align-items:start;column-gap:10px;border-radius:14px;padding:6px 8px;border:2px solid transparent}
+.num{width:24px;height:24px;margin-top:9px;border-radius:50%;background:var(--cream);color:var(--muted);font:600 .74rem "DM Sans";display:grid;place-items:center}
+.ws{display:flex;flex-wrap:wrap;justify-content:flex-start;align-items:flex-start;gap:6px 10px}
+.iw{display:flex;flex-direction:column;align-items:center;text-align:center;padding:4px 8px;min-width:54px;border-radius:12px;cursor:pointer;border:2px solid transparent;max-width:140px}
 .iw .d{font:700 1.3rem/1.45 "Noto Serif Devanagari",Georgia,serif}
 .iw .w{font:italic 600 .95rem Fraunces,Georgia,serif;opacity:.9}
 .iw .m{font-size:.78rem;font-style:italic;color:var(--muted);line-height:1.25}
@@ -40,7 +40,10 @@ select{padding:8px 10px;border-radius:12px;border:1px solid var(--line);backgrou
 .turn.sel-g{background:color-mix(in srgb,var(--blue) 16%,transparent);border-color:var(--blue)!important}
 .note{color:var(--muted);font-size:.85rem}.hint{text-align:center;margin:10px 0 0}
 .prog{height:5px;border-radius:5px;background:var(--cream);overflow:hidden;margin-top:14px}.prog i{display:block;height:100%;width:0;background:var(--teal);transition:width .3s}
-details.tr{margin-top:14px;background:var(--cream);border-radius:14px;padding:10px 14px}details.tr summary{cursor:pointer;font-weight:600}details.tr div{margin-top:6px}
+h4{margin:0 0 4px;font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.card{margin-top:12px;background:var(--card);border-radius:16px;padding:12px 16px;box-shadow:var(--shadow)}.card #tr{font:400 1.02rem/1.55 Fraunces,Georgia,serif}
+.purp p{margin:0 0 .7em}.purp{line-height:1.65;font-size:.95rem}
+details.tr{margin-top:12px;background:var(--cream);border-radius:14px;padding:10px 14px}details.tr summary{cursor:pointer;font-weight:600}details.tr div{margin-top:6px}
 .dock{border-top:1px solid var(--line);background:var(--paper);padding:8px 0 calc(10px + env(safe-area-inset-bottom));text-align:center}
 .stage{font-size:.88rem;color:var(--muted);min-height:1.3em}.stage b{color:var(--ink)}.stage.turn b{color:var(--blue)}
 .gapbar{height:5px;border-radius:5px;background:var(--cream);overflow:hidden;margin:4px 0 6px;visibility:hidden}.gapbar.on{visibility:visible}.gapbar i{display:block;height:100%;width:0;background:var(--blue)}
@@ -78,7 +81,8 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
     <span><button class="chip" id="star" aria-pressed="false">☆ Mark</button> <button class="chip" id="done" aria-pressed="false">✓ Learned</button></span></div>
   <div class="block" id="block"></div>
   <p class="note hint" id="tierNote"></p>
-  <details class="tr"><summary>Translation</summary><div id="tr"></div></details>
+  <section class="card"><h4>Translation</h4><div id="tr"></div></section>
+  <details class="tr" id="purp"><summary>Purport</summary><div id="purpTxt" class="purp"></div></details>
   <div class="prog"><i id="progBar"></i></div><div class="note" id="markNote" style="margin-top:4px;text-align:center"></div>
 </div></main>
 
@@ -190,7 +194,7 @@ const spanOf=(ws,fb)=>ws.length?{start:ws[0].word_audio.start,end:ws[ws.length-1
 function draw(){if(!V)return;const keep=$('#scroll').scrollTop;
   [...$('#tiers').children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===tier));
   $('#ref').textContent='Bhagavad-gītā '+V.id;$('#chname').textContent='Chapter '+V.chapter+' · '+(CH[+V.chapter]||'');
-  $('#tocBtn').textContent='BG '+V.id+'  ▾';$('#tr').textContent=V.translation;$('#tierNote').textContent=NOTES[tier];
+  $('#tocBtn').textContent='BG '+V.id+'  ▾';$('#tr').textContent=V.translation;paintPurport();$('#tierNote').textContent=NOTES[tier];
   const L=V.lines,box=$('#block');box.innerHTML='';ALLW=[];
   const sd=on('#tDev'),si=on('#tIast'),sm=on('#mean');
   const mk={verse:[{el:box,span:V.verse_audio||spanOf(L.flatMap(words))}],hemi:[],pada:[],word:[]};
@@ -212,6 +216,11 @@ function draw(){if(!V)return;const keep=$('#scroll').scrollTop;
       half.append(row)});box.append(half)}
   UN=mk[tier];SELI=Math.min(SELI,UN.length-1);paintSel();paintMarks();paintSummary();$('#scroll').scrollTop=keep}
 
+let PU=null;
+async function paintPurport(){const d=$('#purp'),t=$('#purpTxt');t.textContent='';
+  if(!PU){try{PU=await (await fetch('purports.json')).json()}catch(e){PU={}}}
+  const txt=(PU[V.id]||'').trim();d.hidden=!txt;t.innerHTML='';
+  txt.split(/\n+/).forEach(x=>{const p=document.createElement('p');p.textContent=x;t.append(p)})}
 function paintSel(){document.querySelectorAll('.sel-g').forEach(e=>e.classList.remove('sel-g'));
   const u=UN[SELI];if(!u)return;u.el.classList.add('sel-g');
   if(!RUN)$('#stage').innerHTML=`<b>${tier==='verse'?'Whole verse':NAME[tier]+' '+(SELI+1)+' of '+UN.length}</b>`;
@@ -225,8 +234,9 @@ let srcNode=null,raf=null,T0=0,SP=null,RATE=1;
 async function buf(){const u=V.audio;if(bufUrl===u&&BUF)return BUF;
   const url=u.startsWith('braja/')?'../BrajaBeats_Gita_MP3/'+encodeURIComponent(V.source_file||u.slice(6)):u;
   BUF=await AC.decodeAudioData(await (await fetch(url)).arrayBuffer());bufUrl=u;return BUF}
-function track(){cancelAnimationFrame(raf);const f=()=>{if(!SP)return;const t=SP.start+(AC.currentTime-T0)*RATE;
-  ALLW.forEach(({w,e})=>e.classList.toggle('now',t>=w.word_audio.start&&t<w.word_audio.end));raf=requestAnimationFrame(f)};f()}
+function track(){cancelAnimationFrame(raf);const f=()=>{if(!SP)return;const t=Math.min(SP.start+(AC.currentTime-T0)*RATE,SP.end-0.001);
+  /* only words inside the part being played are lit; the held tail never lights the next word */
+  ALLW.forEach(({w,e})=>e.classList.toggle('now',w.word_audio.start>=SP.start-0.005&&w.word_audio.end<=SP.end+0.005&&t>=w.word_audio.start&&t<w.word_audio.end));raf=requestAnimationFrame(f)};f()}
 function untrack(){SP=null;cancelAnimationFrame(raf);ALLW.forEach(({e})=>e.classList.remove('now'))}
 function setPlaying(p){RUN=p;const b=$('#all');b.textContent=p?'■':'▶';b.setAttribute('aria-pressed',p);b.setAttribute('aria-label',p?'Stop':'Start practice')}
 function stop(){tok++;untrack();if(srcNode){try{srcNode.stop()}catch(e){}srcNode=null}
@@ -254,7 +264,10 @@ function wsola(x0,rate,sr){
    time-stretched first (WSOLA) and then played at normal rate. */
 async function playSpan(sp,my){await buf();if(my!==tok)return false;if(AC.state==='suspended')await AC.resume();
   const rate=+$('#speed').value,tail=+$('#tail').value||0;   // tail: let a long final vowel ring out
-  const s=Math.max(0,sp.start),e=Math.min(BUF.duration,sp.end+tail);
+  const s=Math.max(0,sp.start);
+  /* the hold must never reach the next word: stop a little before its onset */
+  const nxt=ALLW.reduce((m,{w})=>w.word_audio.start>=sp.end-0.005&&w.word_audio.start<m?w.word_audio.start:m,Infinity);
+  const e=Math.max(sp.end,Math.min(BUF.duration,sp.end+tail,nxt-0.04));
   srcNode=AC.createBufferSource();const g=AC.createGain();srcNode.connect(g);g.connect(AC.destination);
   const t=AC.currentTime+0.02,len=(e-s)/rate;
   if(rate===1){srcNode.buffer=BUF;srcNode.start(t,s,e-s)}
@@ -262,7 +275,7 @@ async function playSpan(sp,my){await buf();if(my!==tok)return false;if(AC.state=
     const out=wsola(seg,rate,sr),ab=AC.createBuffer(1,out.length,sr);ab.copyToChannel(out,0);srcNode.buffer=ab;srcNode.start(t)}
   const fo=Math.min(0.06,len/3);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(1,t+0.01);
   g.gain.setValueAtTime(1,Math.max(t+0.01,t+len-fo));g.gain.linearRampToValueAtTime(0,t+len);
-  T0=t;RATE=rate;SP={start:s};track();await sleep(len*1000+60);untrack();return my===tok}
+  T0=t;RATE=rate;SP={start:s,end:sp.end};track();await sleep(len*1000+60);untrack();return my===tok}
 async function hold(sec,my){const end=performance.now()+sec*1000;while(performance.now()<end){if(my!==tok)return false;await sleep(30)}return my===tok}
 function cue(kind){if(!$('#cue').checked)return;if(AC.state==='suspended')AC.resume();const t0=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
   o.type='sine';o.frequency.value=kind==='you'?660:440;g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(0.09,t0+0.015);g.gain.exponentialRampToValueAtTime(0.0001,t0+0.16);
