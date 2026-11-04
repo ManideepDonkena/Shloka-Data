@@ -72,6 +72,8 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
 .iw[data-fb]::after{content:'';width:8px;height:8px;border-radius:50%;margin-top:3px}.iw[data-fb=good]::after{background:var(--teal)}.iw[data-fb=check]::after{background:var(--warn)}
 .sheet input:not([type=checkbox]){padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--cream);color:var(--ink);font:inherit;min-width:0}
 .ic[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:#fff}
+.vnav{display:flex;gap:10px;margin-top:14px}.vnav button{flex:1;border:1px solid var(--line);background:var(--cream);border-radius:14px;padding:12px 8px;font-weight:600}
+.vnav button:last-child{background:var(--teal);border-color:var(--teal);color:#fff}.vnav button:disabled{opacity:.35;cursor:default}
 </style></head><body>
 <header class="top"><div class="wrap">
   <div class="bar1">
@@ -92,6 +94,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
   <section class="card"><h4>Translation</h4><div id="tr"></div></section>
   <details class="tr" id="purp"><summary>Purport</summary><div id="purpTxt" class="purp"></div></details>
   <div class="prog"><i id="progBar"></i></div><div class="note" id="markNote" style="margin-top:4px;text-align:center"></div>
+  <div class="vnav"><button id="vPrev">‹ <span></span></button><button id="vNext"><span></span> ›</button></div>
 </div></main>
 
 <footer class="dock"><div class="wrap">
@@ -185,7 +188,7 @@ async function loadSource(k){
 function load(i){IDX=Math.max(0,Math.min(LIST.length-1,i));V=LIST[IDX];BUF=null;bufUrl=null;SELI=0;CHAP=V.chapter;draw();$('#scroll').scrollTop=0}
 function pick(i){stop();load(i)}
 $('#src').onchange=e=>{stop();loadSource(e.target.value)};
-$('#prev').onclick=()=>pick(IDX-1);$('#next').onclick=()=>pick(IDX+1);
+$('#vPrev').onclick=()=>pick(IDX-1);$('#vNext').onclick=()=>pick(IDX+1);$('#prev').onclick=()=>pick(IDX-1);$('#next').onclick=()=>pick(IDX+1);
 
 /* chapter -> verse sheet (like the app's chapter page) */
 function openSheet(id){$(id).classList.add('open')}
@@ -351,7 +354,9 @@ function paintMarks(){const m=MK[V.id]||{};if(typeof clearFb==='function')clearF
   $('#done').classList.toggle('on',!!m.done);$('#done').setAttribute('aria-pressed',!!m.done);
   const inCh=LIST.filter(v=>v.chapter===V.chapter),learned=inCh.filter(v=>(MK[v.id]||{}).done).length;
   $('#progBar').style.width=(100*learned/Math.max(1,inCh.length))+'%';$('#markNote').textContent=`Chapter ${V.chapter}: ${learned} of ${inCh.length} learned`;
-  $('#prev').disabled=IDX<=0;$('#next').disabled=IDX>=LIST.length-1;if(typeof paintBest==='function')paintBest()}
+  $('#prev').disabled=IDX<=0;$('#next').disabled=IDX>=LIST.length-1;
+  $('#vPrev').disabled=IDX<=0;$('#vNext').disabled=IDX>=LIST.length-1;
+  $('#vPrev span').textContent=IDX>0?'BG '+LIST[IDX-1].id:'';$('#vNext span').textContent=IDX<LIST.length-1?'Next verse · BG '+LIST[IDX+1].id:'Last verse';if(typeof paintBest==='function')paintBest()}
 $('#star').onclick=()=>{const m=MK[V.id]=MK[V.id]||{};m.star=!m.star;saveMk();paintMarks()};
 $('#done').onclick=()=>{const m=MK[V.id]=MK[V.id]||{};m.done=!m.done;saveMk();paintMarks()};
 $('#onlyMarked').onchange=()=>{stop();loadSource($('#src').value)};
