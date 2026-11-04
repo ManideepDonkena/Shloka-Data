@@ -1,0 +1,185 @@
+{
+ "id": "2.20",
+ "dur": 14.673,
+ "halves": [
+  {
+   "start": 0.0,
+   "end": 3.03
+  },
+  {
+   "start": 3.58,
+   "end": 7.265
+  },
+  {
+   "start": 7.815,
+   "end": 11.009
+  },
+  {
+   "start": 11.559,
+   "end": 14.673
+  }
+ ],
+ "words": [
+  {
+   "iast": "na",
+   "start": 0.04,
+   "end": 0.1,
+   "half": 0,
+   "synonym": "na",
+   "meaning": "never"
+  },
+  {
+   "iast": "jāyate",
+   "start": 0.18,
+   "end": 0.741,
+   "half": 0,
+   "synonym": "jāyate",
+   "meaning": "takes birth"
+  },
+  {
+   "iast": "mriyate",
+   "start": 1.001,
+   "end": 1.441,
+   "half": 0,
+   "synonym": "mriyate",
+   "meaning": "dies"
+  },
+  {
+   "iast": "vā",
+   "start": 1.661,
+   "end": 1.762,
+   "half": 0,
+   "synonym": "vā",
+   "meaning": "or"
+  },
+  {
+   "iast": "kadācin",
+   "start": 2.002,
+   "end": 3.663,
+   "half": 0,
+   "synonym": "kadācit",
+   "meaning": "at any time (past, present or future)"
+  },
+  {
+   "iast": "nāyaṁ",
+   "start": 3.683,
+   "end": 4.104,
+   "half": 1,
+   "synonym": "ayam",
+   "meaning": "this"
+  },
+  {
+   "iast": "bhūtvā",
+   "start": 4.284,
+   "end": 4.704,
+   "half": 1,
+   "synonym": "bhūtvā",
+   "meaning": "having come into being"
+  },
+  {
+   "iast": "bhavitā",
+   "start": 4.964,
+   "end": 5.345,
+   "half": 1,
+   "synonym": "bhavitā",
+   "meaning": "will come to be"
+  },
+  {
+   "iast": "vā",
+   "start": 5.565,
+   "end": 5.645,
+   "half": 1,
+   "synonym": "vā",
+   "meaning": "or"
+  },
+  {
+   "iast": "na",
+   "start": 5.905,
+   "end": 5.965,
+   "half": 1,
+   "synonym": "na",
+   "meaning": "never"
+  },
+  {
+   "iast": "bhūyaḥ",
+   "start": 6.085,
+   "end": 6.586,
+   "half": 1,
+   "synonym": "bhūyaḥ",
+   "meaning": "or is again coming to be"
+  },
+  {
+   "iast": "ajo",
+   "start": 7.867,
+   "end": 8.067,
+   "half": 2,
+   "synonym": "ajaḥ",
+   "meaning": "unborn"
+  },
+  {
+   "iast": "nityaḥ",
+   "start": 8.287,
+   "end": 8.808,
+   "half": 2,
+   "synonym": "nityaḥ",
+   "meaning": "eternal"
+  },
+  {
+   "iast": "śāśvato",
+   "start": 8.888,
+   "end": 9.508,
+   "half": 2,
+   "synonym": "śāśvataḥ",
+   "meaning": "permanent"
+  },
+  {
+   "iast": "’yaṁ",
+   "start": 9.668,
+   "end": 9.889,
+   "half": 2,
+   "synonym": "ayam",
+   "meaning": "this"
+  },
+  {
+   "iast": "purāṇo",
+   "start": 10.029,
+   "end": 10.629,
+   "half": 2,
+   "synonym": "purāṇaḥ",
+   "meaning": "the oldest"
+  },
+  {
+   "iast": "na",
+   "start": 11.63,
+   "end": 11.69,
+   "half": 3,
+   "synonym": "na",
+   "meaning": "never"
+  },
+  {
+   "iast": "hanyate",
+   "start": 11.77,
+   "end": 12.291,
+   "half": 3,
+   "synonym": "hanyate",
+   "meaning": "is killed"
+  },
+  {
+   "iast": "hanyamāne",
+   "start": 12.531,
+   "end": 13.392,
+   "half": 3,
+   "synonym": "hanyamāne",
+   "meaning": "being killed"
+  },
+  {
+   "iast": "śarīre",
+   "start": 13.592,
+   "end": 14.192,
+   "half": 3,
+   "synonym": "śarīre",
+   "meaning": "the body."
+  }
+ ],
+ "translation": "For the soul there is neither birth nor death at any time. He has not come into being, does not come into being, and will not come into being. He is unborn, eternal, ever-existing and primeval. He is not slain when the body is slain."
+}

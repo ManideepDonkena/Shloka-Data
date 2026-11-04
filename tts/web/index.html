@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Shloka Synonyms</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&family=Fraunces:ital,wght@0,600;1,400&display=swap">
+<style>
+:root{--night:#183b45;--paper:#faf8f1;--cream:#f3ecd9;--ink:#183b45;--muted:#61767a;--gold:#f6b73c;--coral:#ff786c;--teal:#37c7b3;--line:rgba(24,59,69,.14)}
+@media (prefers-color-scheme:dark){:root{--paper:#0d2734;--cream:#163b47;--ink:#f3ecd9;--muted:#9bb2b4;--line:rgba(255,255,255,.17)}}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 "DM Sans",system-ui,sans-serif}
+main{max-width:860px;margin:0 auto;padding:20px 16px 80px}
+h1{font:600 1.4rem Fraunces,Georgia,serif;margin:0 0 4px}.sub{color:var(--muted);margin:0 0 16px}
+.picker{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.picker button,.ctl button{border:1px solid var(--line);background:var(--cream);color:var(--ink);padding:8px 14px;border-radius:999px;font:inherit;cursor:pointer}
+.picker button[aria-pressed=true]{background:var(--gold);border-color:var(--gold);color:#183b45;font-weight:600}
+.syn{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.half-label{grid-column:1/-1;font-size:.8rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:6px}
+.card{background:var(--cream);border:2px solid transparent;border-radius:16px;padding:12px;text-align:left;font:inherit;color:inherit;cursor:pointer;box-shadow:0 6px 20px rgba(3,16,24,.08);transition:transform .15s,border-color .15s,background .15s}
+.card .w{font:italic 600 1.1rem Fraunces,Georgia,serif;display:block}
+.card .m{display:block;font-size:.88rem;color:var(--muted);margin-top:4px}
+.card.on{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 28%,var(--cream));transform:translateY(-3px)}
+.card:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.ctl{position:sticky;bottom:0;background:var(--paper);padding:12px 0;display:flex;gap:8px;align-items:center;border-top:1px solid var(--line);margin-top:20px}
+.ctl audio{flex:1;min-width:0}.tr{margin:18px 0 0;padding:14px;border-left:4px solid var(--teal);background:var(--cream);border-radius:0 12px 12px 0}
+</style></head><body><main>
+<h1>Word-by-word synonyms</h1><p class="sub">Chanted by Vāgdhenu. Tap a word to hear it; the gold card follows the chant.</p>
+<div class="picker" id="picker" role="group" aria-label="Verse"></div>
+<div class="syn" id="syn"></div>
+<p class="tr" id="tr"></p>
+<div class="ctl"><button id="rep">Repeat word</button><audio id="au" controls></audio></div>
+</main>
+<script>
+const $=id=>document.getElementById(id),au=$('au');let D,cards=[],cur=-1,stopAt=null;
+async function load(v){D=await (await fetch(`verses/${v}.json`)).json();au.src=`verses/${v}.wav`;
+ [...$('picker').children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===v));
+ const s=$('syn');s.innerHTML='';cards=[];let h=-1;
+ D.words.forEach((w,i)=>{if(w.half!==h){h=w.half;const l=document.createElement('div');l.className='half-label';l.textContent=`Line ${h+1}`;s.append(l)}
+  const b=document.createElement('button');b.className='card';b.innerHTML=`<span class=w></span><span class=m></span>`;
+  b.firstChild.textContent=w.iast;b.lastChild.textContent=w.meaning||'—';b.onclick=()=>{cur=i;stopAt=w.end;au.currentTime=w.start;au.play()};
+  s.append(b);cards.push(b)});
+ $('tr').textContent=D.translation}
+au.ontimeupdate=()=>{const t=au.currentTime;if(stopAt!==null&&t>=stopAt){au.pause();stopAt=null}
+ const i=D.words.findIndex(w=>t>=w.start&&t<w.end);cards.forEach((c,k)=>c.classList.toggle('on',k===i))};
+au.onplay=()=>{if(stopAt!==null&&au.currentTime>=stopAt)stopAt=null};
+$('rep').onclick=()=>{if(cur>=0){stopAt=D.words[cur].end;au.currentTime=D.words[cur].start;au.play()}};
+fetch('verses/index.json').then(r=>r.json()).then(vs=>{vs.forEach(v=>{const b=document.createElement('button');b.dataset.v=v;b.textContent=`BG ${v}`;b.onclick=()=>load(v);$('picker').append(b)});load(vs[0])});
+</script></body></html>
