@@ -41,9 +41,9 @@ const Rec={stream:null,
       mr.state!=='inactive'?mr.stop():res(null)})}}};
 async function fbToggle(){const b=$('#fbOn'),want=b.getAttribute('aria-pressed')!=='true';
   if(want&&!(await Rec.ensure())){$('#fbNote').textContent='Microphone blocked or unavailable — allow it in the browser to get feedback.';return}
-  if(!want)Rec.release();b.setAttribute('aria-pressed',want);lsSet('shlokaFb',want?'1':'0');$('#fbNote').textContent=want?'In "Your turn" the mic records you; use headphones so the chant does not bleed in.':'';pushState()}
+  if(!want)Rec.release();b.setAttribute('aria-pressed',want);$('#mic').setAttribute('aria-pressed',want);lsSet('shlokaFb',want?'1':'0');$('#fbNote').textContent=want?'In "Your turn" the mic records you; use headphones so the chant does not bleed in.':'';pushState()}
 $('#fbOn').onclick=fbToggle;
-if(lsGet('shlokaFb','0')==='1'){$('#fbOn').setAttribute('aria-pressed','true')}   // mic permission is asked again on the first practice
+if(lsGet('shlokaFb','0')==='1'){$('#fbOn').setAttribute('aria-pressed','true');$('#mic').setAttribute('aria-pressed','true')}   // mic permission is asked again on the first practice
 
 /* ---------- compare + show ---------- */
 const clearFb=()=>{ALLW.forEach(({e})=>e.removeAttribute('data-fb'));$('#fb').hidden=true};
