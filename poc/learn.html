@@ -29,6 +29,14 @@ body.recall .hide-able{filter:blur(7px);cursor:pointer;transition:filter .2s}bod
 .bar{position:fixed;left:0;right:0;bottom:0;background:var(--paper);border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center}
 .bar .pill{padding:8px 12px}.tr{padding:12px 14px;border-left:4px solid var(--teal);background:var(--cream);border-radius:0 12px 12px 0}
 .note{color:var(--muted);font-size:.85rem}
+.ln{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 4px;margin:2px 0}
+.iw{display:flex;flex-direction:column;align-items:center;text-align:center;padding:5px 7px;border-radius:10px;cursor:pointer;border-bottom:3px solid transparent;max-width:130px}
+.iw .w{font:italic 600 1.15rem Fraunces,Georgia,serif}.iw .m{font-size:.8rem;font-style:italic;color:var(--muted);line-height:1.25;margin-top:1px}
+.iw:hover{background:color-mix(in srgb,var(--gold) 18%,transparent)}
+.iw.now{background:color-mix(in srgb,var(--gold) 55%,transparent);border-bottom-color:var(--gold)}
+.iw.sus{border-bottom:2px dashed #e08a5a}
+.unit.has-iw .tx{text-align:center}.vm{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.pill.on{background:var(--gold);border-color:var(--gold);font-weight:600}
 </style></head><body><main>
 <header><h1>Learn a Shloka</h1><a href="index.html">Study / tagging tools →</a></header>
 <div class="row">
@@ -37,6 +45,9 @@ body.recall .hide-able{filter:blur(7px);cursor:pointer;transition:filter .2s}bod
 </div>
 <div class="tiers" id="tiers" role="group" aria-label="Chunk size"></div>
 <p class="note" id="tierNote"></p>
+<div class="vm"><span class="note" id="markNote"></span>
+  <span><button class="pill" id="star" aria-pressed="false">☆ Mark verse</button> <button class="pill" id="done" aria-pressed="false">✓ Learned</button>
+  <label class="note"><input type="checkbox" id="onlyMarked"> marked only</label></span></div>
 <div id="sa" class="sa"></div>
 <div id="units"></div>
 <div class="tr"><div class="lab">Translation</div><div id="tr"></div></div>
@@ -68,10 +79,10 @@ TIERS.forEach(([k,n,sub])=>{const b=document.createElement('button');b.className
 
 async function loadSource(k){
   if(!DB[k]){try{DB[k]=await (await fetch(SOURCES[k].file)).json()}catch(e){DB[k]=[]}}
-  const list=DB[k].filter(v=>v.lines&&v.lines.length);const sel=$('#verse');sel.innerHTML='';
-  list.sort((a,b)=>(+a.chapter-+b.chapter)||(+a.shloka-+b.shloka)).forEach((v,i)=>{const o=document.createElement('option');o.value=i;o.textContent='BG '+v.id;sel.append(o)});
+  const list=DB[k].filter(v=>v.lines&&v.lines.length&&(!$('#onlyMarked').checked||(MK[v.id]||{}).star));const sel=$('#verse');sel.innerHTML='';
+  list.sort((a,b)=>(+a.chapter-+b.chapter)||(+a.shloka-+b.shloka)).forEach((v,i)=>{const o=document.createElement('option');o.value=i;o.dataset.id=v.id;o.textContent='BG '+v.id;sel.append(o)});
   DB[k+'_list']=list;
-  if(!list.length){$('#units').innerHTML='<p class="note">No verses in this source yet.</p>';return}
+  if(!list.length){$('#units').innerHTML='<p class="note">No verses here yet (or none marked).</p>';return}
   pick(0)}
 function pick(i){V=DB[$('#src').value+'_list'][i];BUF=null;bufUrl=null;draw()}
 $('#src').onchange=e=>loadSource(e.target.value);$('#verse').onchange=e=>pick(+e.target.value);
@@ -79,34 +90,56 @@ $('#src').onchange=e=>loadSource(e.target.value);$('#verse').onchange=e=>pick(+e
 function words(l){return l.chunks.flatMap(c=>c.words)}
 function gloss(ws){return ws.map(w=>w.meaning).filter(Boolean).join(' · ')}
 function units(){
-  const L=V.lines;
-  if(tier==='verse')return[{lab:'Verse',iast:L.map(l=>l.text).join(' / '),span:V.verse_audio,ws:L.flatMap(words),meaning:V.translation}];
-  if(tier==='hemi'){const o=[];for(let i=0;i<L.length;i+=2){const g=L.slice(i,i+2);o.push({lab:'Line '+(i/2+1),iast:g.map(l=>l.text).join(' / '),
-    span:{start:g[0].line_audio.start,end:g[g.length-1].line_audio.end},ws:g.flatMap(words)})}return o}
-  if(tier==='pada')return L.map((l,i)=>({lab:'Pāda '+(i+1),iast:l.text,span:l.line_audio,ws:words(l)}));
-  return L.flatMap(l=>words(l)).map(w=>({lab:'',iast:w.token,span:w.word_audio,ws:[w],meaning:w.meaning,sus:w.suspect}))}
+  const L=V.lines,W=l=>[words(l)];
+  if(tier==='verse')return[{lab:'Verse',lines:L.map(words),span:V.verse_audio,tr:V.translation}];
+  if(tier==='hemi'){const o=[];for(let i=0;i<L.length;i+=2){const g=L.slice(i,i+2);o.push({lab:'Line '+(i/2+1),lines:g.map(words),
+    span:{start:g[0].line_audio.start,end:g[g.length-1].line_audio.end}})}return o}
+  if(tier==='pada')return L.map((l,i)=>({lab:'Pāda '+(i+1),lines:W(l),span:l.line_audio}));
+  return L.flatMap(words).map(w=>({lab:'',lines:[[w]],span:w.word_audio}))}
 
 function draw(){
   [...$('#tiers').children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===tier));
   $('#tierNote').textContent=NOTES[tier];$('#sa').textContent=V.sanskrit;$('#sa').classList.add('hide-able');$('#tr').textContent=V.translation;
-  UN=units();const box=$('#units');box.innerHTML='';box.className=tier==='word'?'words':'';
-  UN.forEach((u,i)=>{const d=document.createElement('div');d.className='unit'+(u.sus?' sus':'');
-    d.innerHTML=`<button class="play" aria-label="Play">▶</button><div class="tx"><div class="lab"></div><div class="iast hide-able"></div><div class="mean"></div></div>`;
-    d.querySelector('.lab').textContent=u.lab;d.querySelector('.iast').textContent=u.iast;
-    d.querySelector('.mean').textContent=u.meaning||gloss(u.ws);d.querySelector('.play').onclick=()=>{stop();playUnit(i,+$('#loop').value)};
-    d.querySelector('.iast').onclick=e=>e.target.classList.toggle('show');u.el=d;box.append(d)});
-  document.querySelectorAll('.mean').forEach(m=>m.hidden=$('#mean').getAttribute('aria-pressed')!=='true')}
+  UN=units();const box=$('#units');box.innerHTML='';box.className=tier==='word'?'words':'';ALLW=[];
+  const showM=$('#mean').getAttribute('aria-pressed')==='true';
+  UN.forEach((u,i)=>{const d=document.createElement('div');d.className='unit has-iw';
+    d.innerHTML=`<button class="play" aria-label="Play">▶</button><div class="tx"><div class="lab"></div><div class="body"></div></div>`;
+    d.querySelector('.lab').textContent=u.lab;d.querySelector('.play').onclick=()=>{stop();playUnit(i,+$('#loop').value)};
+    const body=d.querySelector('.body');
+    u.lines.forEach(ws=>{const ln=document.createElement('div');ln.className='ln';
+      ws.forEach(w=>{const e=document.createElement('div');e.className='iw'+(w.suspect?' sus':'');
+        e.innerHTML='<span class="w hide-able"></span><span class="m"></span>';e.firstChild.textContent=w.token;
+        const m=e.lastChild;m.textContent=w.meaning||'';m.hidden=!showM;
+        e.onclick=ev=>{ev.stopPropagation();stop();playOne(w)};e.firstChild.onclick=ev=>{if(document.body.classList.contains('recall')){ev.stopPropagation();ev.target.classList.toggle('show')}};
+        ALLW.push({w,e});ln.append(e)});body.append(ln)});
+    if(u.tr){const t=document.createElement('div');t.className='note';t.style.marginTop='8px';t.textContent=u.tr;body.append(t)}
+    u.el=d;box.append(d)});
+  paintMarks()}
+let ALLW=[],raf=null,T0=0,SP=null,RATE=1;
+async function playOne(w){UN.forEach(x=>x.el.classList.remove('live'));const my=tok;await playSpan(w.word_audio,my)}
+function track(){cancelAnimationFrame(raf);const f=()=>{if(!SP)return;const t=SP.start+(AC.currentTime-T0)*RATE;
+  ALLW.forEach(({w,e})=>e.classList.toggle('now',t>=w.word_audio.start&&t<w.word_audio.end));raf=requestAnimationFrame(f)};f()}
+function untrack(){SP=null;cancelAnimationFrame(raf);ALLW.forEach(({e})=>e.classList.remove('now'))}
+/* ---- verse marks (like the app's bookmarks): saved on this device ---- */
+const MK=(()=>{try{return JSON.parse(localStorage.getItem('shlokaMarks')||'{}')}catch(e){return{}}})();
+const saveMk=()=>{try{localStorage.setItem('shlokaMarks',JSON.stringify(MK))}catch(e){}};
+function paintMarks(){const m=MK[V.id]||{};$('#star').textContent=(m.star?'★':'☆')+' Mark verse';$('#star').classList.toggle('on',!!m.star);
+  $('#done').classList.toggle('on',!!m.done);$('#markNote').textContent=Object.values(MK).filter(x=>x.star).length+' marked · '+Object.values(MK).filter(x=>x.done).length+' learned';
+  [...$('#verse').options].forEach(o=>{const id=o.dataset.id,x=MK[id]||{};o.textContent=(x.star?'★ ':'')+'BG '+id+(x.done?' ✓':'')})}
+$('#star').onclick=()=>{(MK[V.id]=MK[V.id]||{}).star=!(MK[V.id]||{}).star;saveMk();paintMarks()};
+$('#done').onclick=()=>{(MK[V.id]=MK[V.id]||{}).done=!(MK[V.id]||{}).done;saveMk();paintMarks()};
+$('#onlyMarked').onchange=()=>loadSource($('#src').value);
 async function buf(){const u=V.audio;if(bufUrl===u&&BUF)return BUF;
   const url=u.startsWith('braja/')?'../BrajaBeats_Gita_MP3/'+encodeURIComponent(V.source_file||u.slice(6)):u;
   BUF=await AC.decodeAudioData(await (await fetch(url)).arrayBuffer());bufUrl=u;return BUF}
 let srcNode=null;
-function stop(){tok++;if(srcNode){try{srcNode.onended=null;srcNode.stop()}catch(e){}srcNode=null}UN.forEach(u=>u.el.classList.remove('live'))}
+function stop(){tok++;untrack();if(srcNode){try{srcNode.onended=null;srcNode.stop()}catch(e){}srcNode=null}UN.forEach(u=>u.el.classList.remove('live'))}
 async function playSpan(sp,my){await buf();if(my!==tok)return;if(AC.state==='suspended')await AC.resume();
   const rate=+$('#speed').value;srcNode=AC.createBufferSource();srcNode.buffer=BUF;srcNode.playbackRate.value=rate;srcNode.connect(AC.destination);
   const g=AC.createGain();srcNode.disconnect();srcNode.connect(g);g.connect(AC.destination);
   const s=Math.max(0,sp.start),e=Math.min(BUF.duration,sp.end),t=AC.currentTime;
   g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(1,t+0.01);g.gain.setValueAtTime(1,t+(e-s)/rate-0.01);g.gain.linearRampToValueAtTime(0,t+(e-s)/rate); // anti-click fades
-  srcNode.start(t,s,e-s);await sleep((e-s)/rate*1000+30)}
+  srcNode.start(t,s,e-s);T0=t;RATE=rate;SP={start:s};track();await sleep((e-s)/rate*1000+30);if(my===tok)untrack()}
 async function playUnit(i,n=1,pause=0){const my=tok;const u=UN[i];
   for(let k=0;k<n&&my===tok;k++){UN.forEach(x=>x.el.classList.remove('live'));u.el.classList.add('live');u.el.scrollIntoView({block:'nearest',behavior:'smooth'});
     await playSpan(u.span,my);if(my!==tok)return;if(pause)await sleep(pause*(u.span.end-u.span.start)*1000+400);else await sleep(120)}
