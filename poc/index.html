@@ -275,6 +275,7 @@
           <option value="mms">+ MMS forced alignment</option>
           <option value="sushrota">+ Sushrota (Sanskrit Conformer)</option>
           <option value="dsp">+ DSP auto-split</option>
+          <option value="tts">+ Vāgdhenu TTS chant</option>
         </select>
       </label>
       <label class="f">order
@@ -1679,7 +1680,8 @@ function fillSelect(keepId){
 
 const SRC = {mms:      {file:'aligned_data.json',  data:null},
              sushrota: {file:'sushrota_data.json', data:null},
-             dsp:      {file:'auto_data.json',     data:null}};
+             dsp:      {file:'auto_data.json',     data:null},
+             tts:      {file:'tts_data.json',      data:null}};
 /* Two aligners that share no architecture, training data or tokeniser. Where
    they place a boundary identically it is very likely right; where they diverge
    something is wrong. With only two loose hand-tagged verses this is the best

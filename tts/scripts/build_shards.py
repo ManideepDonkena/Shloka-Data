@@ -19,7 +19,7 @@ def padas(sk):
     out = []
     for l in lines:
         l = re.sub(r"॥.*?॥", "", l)             # verse number
-        l = l.replace("-", "").replace(":", "ः").replace("।", "|")
+        l = re.sub("[\u200c\u200d]", "", l).replace("-", "").replace(":", "ः").replace("।", "|")
         for half in l.split("|"):
             half = re.sub(r"[ऽ]", "ऽ", half).strip()
             if half: out.append(half)
