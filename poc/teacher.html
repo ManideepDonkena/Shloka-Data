@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Teacher view</title>
+<style>:root{--bg:#faf8f1;--ink:#183b45;--muted:#61767a;--line:rgba(24,59,69,.15)}@media(prefers-color-scheme:dark){:root{--bg:#0d2734;--ink:#f3ecd9;--muted:#9bb2b4;--line:rgba(255,255,255,.18)}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,sans-serif}main{max-width:860px;margin:0 auto;padding:20px 16px}
+input,button{font:inherit;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:transparent;color:inherit}
+table{width:100%;border-collapse:collapse;margin-top:16px}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);font-size:.92rem}th{color:var(--muted);font-weight:600}.wrap{overflow-x:auto}</style></head>
+<body><main><h1>Students</h1><p style="color:var(--muted)">Needs the teacher key set as TEACHER_KEY on the server. <a href="learn.html">← Learner page</a></p>
+<form id="f"><input id="k" type="password" placeholder="Teacher key" autocomplete="current-password"> <button>Show students</button></form><p id="m"></p>
+<div class="wrap"><table id="t" hidden><thead><tr><th>Name</th><th>Learned</th><th>Marked</th><th>Attempts</th><th>Avg score</th><th>Last practice</th></tr></thead><tbody></tbody></table></div></main>
+<script>
+const d=t=>t?new Date(t*1000).toLocaleDateString():'—';
+document.getElementById('f').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('m'),t=document.getElementById('t');m.textContent='';
+  try{const r=await fetch('api/teacher/students',{headers:{'X-Teacher-Key':document.getElementById('k').value}});if(!r.ok)throw new Error(r.status===403?'Wrong key, or the teacher view is switched off.':'Error '+r.status);
+    const j=await r.json(),tb=t.tBodies[0];tb.innerHTML='';
+    j.students.forEach(s=>{const tr=tb.insertRow();[s.name,s.learned,s.marked,s.attempts,s.avg_score??'—',d(s.last_attempt)].forEach(v=>{tr.insertCell().textContent=v})});
+    t.hidden=false;m.textContent=j.students.length+' student(s)'}catch(x){m.textContent=x.message}};
+</script></body></html>
