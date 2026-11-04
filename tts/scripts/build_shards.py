@@ -27,7 +27,7 @@ def meter_for(n):
 
 def halves(sk):
     lines = [l.strip() for l in sk.split("\n") if l.strip()]
-    lines = [l for l in lines if not re.search(r"उवाच\s*$", l)]
+    lines = [l for l in lines if not re.search(r"वाच\s*$", l)]
     out, cur = [], []
     for l in lines:
         cur.append(l)

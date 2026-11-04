@@ -10,7 +10,17 @@ joined to `poc/mapping.json` synonyms.
 4. `web/index.html` — word cards with meanings; tap to play a word, gold card follows the chant.
    Serve with `python3 -m http.server` inside `web/`.
 
-Status: 3 verses (1.14, 2.20, 18.66) rendered. Audio quality not yet reviewed by ear.
-Known issues: words split across a line break (e.g. kadācin in 2.20) spill over the boundary; very short spans
-(mā in 18.66); every verse rendered as anuṣṭubh (triṣṭubh verses need meter detection); merged verses skipped.
-Scripts contain absolute paths from the dev machine — adjust before reuse.
+Status: all 657 verses rendered and aligned (`poc/tts_data.json`, `poc/audio-tts/*.mp3`, ~51 MB at 56 kbps).
+Alignment confidence per verse: median 0.91, minimum 0.74 (6 verses under 0.80). Audio not yet reviewed by ear.
+
+How the full set was made (see `scripts/`):
+- `build_shards.py --all` - one render clip per half-verse (a half ends at a danda); meter chosen from the syllable count
+  (16 anuṣṭubh, 22-23 upajāti, 24 vaṃśastha). Speaker lines ("X uvāca", also fused "śrībhagavānuvāca") are not chanted.
+- Render with Vāgdhenu's `src/render.py`; `assemble_align.py` joins clips, aligns words with MMS, writes MP3 + `tts_data.json`.
+  Each word runs to the next word's onset (the chant is legato, so a word's tail rings into the gap).
+- `fix_merged.py` - `poc/mapping.json` has no usable word list for the 30 merged verses (1.16-18 ...) and 6.24 (gita.json's
+  transliteration only covers the first verse / two lines). Their words are rebuilt from the Devanagari, so these
+  verses have coarser, sandhi-joined words (some compounds run 3-5 s) but still carry meanings.
+
+Known issues: word boundaries are aligner-based, not hand-checked; merged verses (30) and 6.24 have coarse words;
+scripts contain absolute paths from the dev machine.

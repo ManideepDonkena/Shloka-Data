@@ -9,6 +9,9 @@ from align_mms import romanize
 PADS, OUT = sys.argv[1], sys.argv[2]; os.makedirs(OUT, exist_ok=True)
 SR = 24000; GAP = 0.55; FFMPEG = os.environ.get("FFMPEG", "ffmpeg")
 mapping = {m["id"]: m for m in json.load(open(f"{POC}/mapping.json"))}
+if os.environ.get("MAPPING_EXTRA"):          # rebuilt mappings (merged verses) override mapping.json
+    mapping.update({m["id"]: m for m in json.load(open(os.environ["MAPPING_EXTRA"]))})
+ONLY = set(os.environ["IDS"].split(",")) if os.environ.get("IDS") else None
 bundle = torchaudio.pipelines.MMS_FA; dev = "cuda" if torch.cuda.is_available() else "cpu"
 model = bundle.get_model().eval().to(dev); tok = bundle.get_tokenizer(); aligner = bundle.get_aligner()
 CONS = "kgṅcjñṭḍṇtdnpbmyrlvśṣsh"
@@ -19,6 +22,7 @@ def rend_words(deva):  # rendered (post hyphen-strip) half text -> words
 ids = sorted({re.match(r"(.+)_p\d+$", os.path.basename(f)[:-4]).group(1) for f in glob.glob(f"{PADS}/*.wav")})
 res = []
 for vid in ids:
+    if ONLY and vid not in ONLY: continue
     parts = sorted(glob.glob(f"{PADS}/{vid}_p*.wav"), key=lambda f: int(re.search(r"_p(\d+)", f).group(1)))
     wav, halves, t = [], [], 0.0
     for i, p in enumerate(parts):
@@ -28,6 +32,10 @@ for vid in ids:
     audio = np.concatenate(wav); tmp = f"{OUT}/{vid}.tmp.wav"; sf.write(tmp, audio, SR)
     subprocess.run([FFMPEG, "-y", "-loglevel", "error", "-i", tmp, "-ac", "1", "-b:a", "56k", f"{OUT}/{vid}.mp3"], check=True); os.remove(tmp)
     m = mapping[vid]
+    if not any(l["tokens"] for l in m["lines"]):
+        # no word-to-synonym mapping for this verse (merged verses, a few failures): still align the words, without meanings
+        m = dict(m, lines=[{"index": i, "text": ln, "tokens": [{"token": w, "synonym": "", "meaning": ""} for w in ln.split()]}
+                           for i, ln in enumerate(l for l in m["english"].split("\n") if l.strip())])
     toks, line_of = [], []
     for li, ln in enumerate(l for l in m["lines"] if not l["text"].strip().endswith("uvāca")):
         for tk in ln["tokens"]: toks.append(tk); line_of.append(li)
@@ -37,7 +45,7 @@ for vid in ids:
     # of the last token before the break onto the front of the first token after it.
     # Cross-line sandhi: a Devanagari line ending in "-" splits one word (kadāci- / nnāyaṁ). The chant says
     # "kadāci" + "nnāyaṁ", so move the final consonant of the token before the break to the front of the next.
-    raw = [l.strip() for l in m["sanskrit"].split("\n") if l.strip() and not l.strip().endswith("उवाच")]
+    raw = [l.strip() for l in m["sanskrit"].split("\n") if l.strip() and not re.search(r"वाच\s*$", l.strip())]
     n_words, brk = 0, []
     for l in raw:
         t = re.sub(r"॥.*?॥", "", l); t = re.sub(r"[।|॥]", " ", t)
@@ -50,6 +58,7 @@ for vid in ids:
                 if c and c not in "aeiou" and texts[nxt].startswith(c):
                     texts[prev] = texts[prev][:-1]; texts[nxt] = c + texts[nxt]
     keep = [i for i, w in enumerate(texts) if w]
+    if not keep: print(vid, 'SKIPPED: no alignable words'); continue
     w16 = torchaudio.functional.resample(torch.tensor(audio, dtype=torch.float32)[None], SR, 16000).to(dev)
     with torch.inference_mode():
         em, _ = model(w16); spans = aligner(em[0], tok([texts[i] for i in keep]))
