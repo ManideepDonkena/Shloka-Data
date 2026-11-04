@@ -244,7 +244,7 @@ let srcNode=null,raf=null,T0=0,SP=null,RATE=1;
 async function buf(){const u=V.audio;if(bufUrl===u&&BUF)return BUF;
   const url=u.startsWith('braja/')?'../BrajaBeats_Gita_MP3/'+encodeURIComponent(V.source_file||u.slice(6)):u;
   BUF=await AC.decodeAudioData(await (await fetch(url)).arrayBuffer());bufUrl=u;return BUF}
-function track(){cancelAnimationFrame(raf);const f=()=>{if(!SP)return;const t=Math.min(SP.start+(AC.currentTime-T0)*RATE,SP.end-0.001);
+function track(){cancelAnimationFrame(raf);const f=()=>{if(!SP)return;const t=Math.min(SP.start+(AC.currentTime-(AC.outputLatency||AC.baseLatency||0)-T0)*RATE,SP.end-0.001);
   /* only words inside the part being played are lit; the held tail never lights the next word */
   ALLW.forEach(({w,e})=>e.classList.toggle('now',w.word_audio.start>=SP.start-0.005&&w.word_audio.end<=SP.end+0.005&&t>=w.word_audio.start&&t<w.word_audio.end));raf=requestAnimationFrame(f)};f()}
 function untrack(){SP=null;cancelAnimationFrame(raf);ALLW.forEach(({e})=>e.classList.remove('now'))}
@@ -279,13 +279,17 @@ async function playSpan(sp,my){await buf();if(my!==tok)return false;if(AC.state=
   const nxt=ALLW.reduce((m,{w})=>w.word_audio.start>=sp.end-0.005&&w.word_audio.start<m?w.word_audio.start:m,Infinity);
   const e=Math.max(sp.end,Math.min(BUF.duration,sp.end+tail,nxt-0.04));
   srcNode=AC.createBufferSource();const g=AC.createGain();srcNode.connect(g);g.connect(AC.destination);
-  const t=AC.currentTime+0.02,len=(e-s)/rate;
-  if(rate===1){srcNode.buffer=BUF;srcNode.start(t,s,e-s)}
+  const len=(e-s)/rate;let t;
+  if(rate===1){t=AC.currentTime+0.03;srcNode.buffer=BUF;srcNode.start(t,s,e-s)}
   else{const sr=BUF.sampleRate,seg=BUF.getChannelData(0).slice(Math.round(s*sr),Math.round(e*sr));
-    const out=wsola(seg,rate,sr),ab=AC.createBuffer(1,out.length,sr);ab.copyToChannel(out,0);srcNode.buffer=ab;srcNode.start(t)}
+    const out=wsola(seg,rate,sr),ab=AC.createBuffer(1,out.length,sr);ab.copyToChannel(out,0);
+    if(my!==tok)return false;                      // the stretch can take a while: the user may have pressed stop
+    t=AC.currentTime+0.03;                         // start AFTER it is computed, or the highlight runs ahead of the sound
+    srcNode.buffer=ab;srcNode.start(t)}
   const fo=Math.min(0.06,len/3);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(1,t+0.01);
   g.gain.setValueAtTime(1,Math.max(t+0.01,t+len-fo));g.gain.linearRampToValueAtTime(0,t+len);
-  T0=t;RATE=rate;SP={start:s,end:sp.end};track();await sleep(len*1000+60);untrack();return my===tok}
+  const node=srcNode,done=new Promise(r=>{node.onended=r;setTimeout(r,len*1000+600)});   // next step only after the sound has really ended
+  T0=t;RATE=rate;SP={start:s,end:sp.end};track();await done;untrack();return my===tok}
 async function hold(sec,my){const end=performance.now()+sec*1000;while(performance.now()<end){if(my!==tok)return false;await sleep(30)}return my===tok}
 function cue(kind){if(!$('#cue').checked)return;if(AC.state==='suspended')AC.resume();const t0=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
   o.type='sine';o.frequency.value=kind==='you'?660:440;g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(0.09,t0+0.015);g.gain.exponentialRampToValueAtTime(0.0001,t0+0.16);
@@ -296,9 +300,9 @@ async function preview(){stop();const my=tok,u=UN[SELI];if(!u)return;await playS
 
 /* ▶ : the teacher session — listen, then a gap for you to chant it back, then on to the next part (and verse) */
 function stageSet(txt,sub,turn){$('#stage').className='stage'+(turn?' turn':'');$('#stage').innerHTML=`<b>${txt}</b>${sub?' · '+sub:''}`}
-async function countdown(ms,my,u){const bar=$('#gapbar'),fill=$('#gapfill');bar.classList.add('on');u.el.classList.add('turn');const t0=performance.now();
+async function countdown(ms,my,u){const bar=$('#gapbar'),fill=$('#gapfill');bar.classList.add('on');[].concat(u.el).forEach(e=>e.classList.add('turn'));const t0=performance.now();
   for(;;){const el=performance.now()-t0;if(my!==tok)break;if(el>=ms)break;fill.style.width=(100*el/ms).toFixed(1)+'%';await sleep(40)}
-  fill.style.width='0';bar.classList.remove('on');u.el.classList.remove('turn');return my===tok}
+  fill.style.width='0';bar.classList.remove('on');[].concat(u.el).forEach(e=>e.classList.remove('turn'));return my===tok}
 async function session(from){stop();const my=tok;setPlaying(true);SELI=from??SELI;
   const reps=+$('#loop').value,gapF=+$('#gap').value,auto=$('#auto').value,bt=+$('#between').value,cumul=$('#cumul').checked;
   try{for(;;){
@@ -312,7 +316,11 @@ async function session(from){stop();const my=tok;setPlaying(true);SELI=from??SEL
           if(rec){const clip=await rec.stop();if(ok)analyse(u,clip)}
           if(!ok)return;cue('me')}
         if(r<reps-1&&!await hold(0.45,my))return}
-      if(cumul&&SELI>0&&(tier==='word'||tier==='pada')){const from0=UN[0].span.start;if(u.span.end-from0<90){stageSet('Build-up','everything so far',false);if(!await playSpan({start:from0,end:u.span.end},my))return}}
+      if(cumul&&SELI>0&&(tier==='word'||tier==='pada')){const from0=UN[0].span.start,tot=u.span.end-from0;
+        if(tot<90){stageSet('Build-up',`parts 1–${SELI+1} together`,false);if(!await hold(0.4,my))return;if(!await playSpan({start:from0,end:u.span.end},my))return;
+          if(gapF>0){if(!await hold(0.3,my))return;cue('you');stageSet('Your turn',`chant parts 1–${SELI+1} together`,true);
+            if(!await countdown(tot*gapF*1000/(+$('#speed').value),my,{el:UN.slice(0,SELI+1).map(x=>x.el)}))return;cue('me')}
+          if(!await hold(0.5,my))return}}
       if(auto==='none')return endRun(my);
       if(SELI<UN.length-1){if(!await hold(bt,my))return;SELI++}else break}
     if(auto==='verse'&&IDX<LIST.length-1){stageSet('Next verse','',false);if(!await hold(bt*1.5,my))return;load(IDX+1);tokKeep(my)}
