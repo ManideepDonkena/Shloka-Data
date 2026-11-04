@@ -24,13 +24,13 @@ select{padding:8px 10px;border-radius:12px;border:1px solid var(--line);backgrou
 .meta .ref{font:600 1.05rem Fraunces,Georgia,serif}.meta small{display:block;font:400 .78rem "DM Sans";color:var(--muted)}
 .chip{border:1px solid var(--line);background:var(--cream);border-radius:999px;padding:5px 12px;font-size:.88rem}
 .chip.on{background:var(--gold);border-color:var(--gold);color:#183b45;font-weight:600}
-.block{background:var(--card);border:2px solid transparent;border-radius:20px;padding:10px 10px;box-shadow:var(--shadow)}
-.half+.half{margin-top:12px;border-top:1px dashed var(--line);padding-top:12px}
-.half{border-radius:14px;border:2px solid transparent;padding:2px 0;display:grid;gap:4px}
-.line{display:grid;grid-template-columns:26px minmax(0,1fr);align-items:start;column-gap:10px;border-radius:14px;padding:6px 8px;border:2px solid transparent}
-.num{width:24px;height:24px;margin-top:9px;border-radius:50%;background:var(--cream);color:var(--muted);font:600 .74rem "DM Sans";display:grid;place-items:center}
-.ws{display:flex;flex-wrap:wrap;justify-content:flex-start;align-items:flex-start;gap:6px 10px}
-.iw{display:flex;flex-direction:column;align-items:center;text-align:center;padding:4px 8px;min-width:54px;border-radius:12px;cursor:pointer;border:2px solid transparent;max-width:140px}
+.block{background:var(--card);border:2px solid transparent;border-radius:20px;padding:8px;box-shadow:var(--shadow)}
+.half+.half{margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
+.half{border-radius:14px;border:2px solid transparent;padding:0}
+.line{display:grid;grid-template-columns:26px minmax(0,1fr);align-items:center;column-gap:8px;border-radius:14px;padding:8px 10px;border:2px solid transparent}
+.num{width:24px;height:24px;border-radius:50%;background:var(--cream);color:var(--muted);font:600 .74rem "DM Sans";display:grid;place-items:center}
+.ws{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:6px 4px;align-items:start}
+.iw{display:flex;flex-direction:column;align-items:center;text-align:center;padding:4px 6px;border-radius:12px;cursor:pointer;border:2px solid transparent;min-width:0}
 .iw .d{font:700 1.3rem/1.45 "Noto Serif Devanagari",Georgia,serif}
 .iw .w{font:italic 600 .95rem Fraunces,Georgia,serif;opacity:.9}
 .iw .m{font-size:.78rem;font-style:italic;color:var(--muted);line-height:1.25}
@@ -65,6 +65,11 @@ details.tr{margin-top:12px;background:var(--cream);border-radius:14px;padding:10
 body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.show{filter:none}
 .empty{text-align:center;color:var(--muted);padding:40px 0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.fb{display:flex;gap:10px;align-items:center;text-align:left;margin:6px auto 2px;max-width:560px;padding:6px 12px;border-radius:14px;background:var(--cream);font-size:.84rem;line-height:1.35;cursor:pointer;border:1px solid var(--line)}
+.fb[hidden]{display:none}.fb b{flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font:700 1.05rem "DM Sans";color:#fff;background:var(--muted)}
+.fb.good b{background:var(--teal)}.fb.ok b{background:var(--gold);color:#183b45}.fb.low b{background:var(--warn)}.fbl{font-weight:600}
+.iw[data-fb]::after{content:'';width:8px;height:8px;border-radius:50%;margin-top:3px}.iw[data-fb=good]::after{background:var(--teal)}.iw[data-fb=check]::after{background:var(--warn)}
+.sheet input:not([type=checkbox]){padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--cream);color:var(--ink);font:inherit;min-width:0}
 </style></head><body>
 <header class="top"><div class="wrap">
   <div class="bar1">
@@ -87,6 +92,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
 </div></main>
 
 <footer class="dock"><div class="wrap">
+  <div class="fb" id="fb" hidden title="Tap to hide"><b id="fbScore"></b><span id="fbTxt"></span></div>
   <div class="stage" id="stage"></div>
   <div class="gapbar" id="gapbar"><i id="gapfill"></i></div>
   <div class="row">
@@ -106,6 +112,8 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
 </div></div></div>
 
 <div class="sheet" id="setSheet" role="dialog" aria-label="Settings"><div class="bk" data-close></div><div class="pn"><div class="in">
+  <h3>Student</h3>
+  <div id="stBox" class="in"></div>
   <h3>Practice</h3>
   <label>Your-turn gap <select id="gap"><option value="0">none</option><option value="0.5">0.5× the line</option><option value="1" selected>1× the line</option><option value="1.5">1.5×</option><option value="2">2×</option><option value="3">3×</option></select></label>
   <label>Repeat each <select id="loop"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option></select></label>
@@ -113,6 +121,8 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
   <label>Hold the end of each part <select id="tail"><option value="0">as tagged</option><option value="0.1">+0.1 s</option><option value="0.2" selected>+0.2 s</option><option value="0.35">+0.35 s</option><option value="0.5">+0.5 s</option></select></label>
   <label>Pause between parts <select id="between"><option value="0.4">short</option><option value="0.9" selected>medium</option><option value="1.6">long</option></select></label>
   <label><span>Build-up (replay from the start)</span><input type="checkbox" id="cumul"></label>
+  <label><span>Record me in "Your turn" and give feedback</span><button class="pill" id="fbOn" aria-pressed="false">Mic feedback</button></label>
+  <p class="note" id="fbNote" style="margin:0"></p>
   <label><span>Tone when it's your turn</span><input type="checkbox" id="cue" checked></label>
   <h4>Audio</h4>
   <label>Source <select id="src"></select></label>
@@ -296,7 +306,11 @@ async function session(from){stop();const my=tok;setPlaying(true);SELI=from??SEL
       for(let r=0;r<reps;r++){
         stageSet('Listen',`${NAME[tier]==='Whole verse'?'':NAME[tier]+' '+(SELI+1)+'/'+UN.length+' · '}${r+1}/${reps}`,false);
         if(!await hold(0.35,my))return;if(!await playSpan(u.span,my))return;
-        if(gapF>0){if(!await hold(0.3,my))return;cue('you');stageSet('Your turn','chant it back',true);if(!await countdown(dur*gapF*1000/(+$('#speed').value),my,u))return;cue('me')}
+        if(gapF>0){if(!await hold(0.3,my))return;cue('you');stageSet('Your turn','chant it back',true);
+          const rec=on('#fbOn')?(await hold(0.2,my),Rec.start()):null;     // record after the cue tone so it is not picked up
+          const ok=await countdown(dur*gapF*1000/(+$('#speed').value)+(rec?900:0),my,u);
+          if(rec){const clip=await rec.stop();if(ok)analyse(u,clip)}
+          if(!ok)return;cue('me')}
         if(r<reps-1&&!await hold(0.45,my))return}
       if(cumul&&SELI>0&&(tier==='word'||tier==='pada')){const from0=UN[0].span.start;if(u.span.end-from0<90){stageSet('Build-up','everything so far',false);if(!await playSpan({start:from0,end:u.span.end},my))return}}
       if(auto==='none')return endRun(my);
@@ -317,13 +331,13 @@ $('#sum').onclick=()=>openSheet('#setSheet');
 
 /* ---------- marks (saved on this device) ---------- */
 const MK=(()=>{try{return JSON.parse(localStorage.getItem('shlokaMarks')||'{}')}catch(e){return{}}})();
-const saveMk=()=>lsSet('shlokaMarks',JSON.stringify(MK));
-function paintMarks(){const m=MK[V.id]||{};
+let saveMk=()=>lsSet('shlokaMarks',JSON.stringify(MK));
+function paintMarks(){const m=MK[V.id]||{};if(typeof clearFb==='function')clearFb();
   $('#star').textContent=(m.star?'★':'☆')+' Mark';$('#star').classList.toggle('on',!!m.star);$('#star').setAttribute('aria-pressed',!!m.star);
   $('#done').classList.toggle('on',!!m.done);$('#done').setAttribute('aria-pressed',!!m.done);
   const inCh=LIST.filter(v=>v.chapter===V.chapter),learned=inCh.filter(v=>(MK[v.id]||{}).done).length;
   $('#progBar').style.width=(100*learned/Math.max(1,inCh.length))+'%';$('#markNote').textContent=`Chapter ${V.chapter}: ${learned} of ${inCh.length} learned`;
-  $('#prev').disabled=IDX<=0;$('#next').disabled=IDX>=LIST.length-1}
+  $('#prev').disabled=IDX<=0;$('#next').disabled=IDX>=LIST.length-1;if(typeof paintBest==='function')paintBest()}
 $('#star').onclick=()=>{const m=MK[V.id]=MK[V.id]||{};m.star=!m.star;saveMk();paintMarks()};
 $('#done').onclick=()=>{const m=MK[V.id]=MK[V.id]||{};m.done=!m.done;saveMk();paintMarks()};
 $('#onlyMarked').onchange=()=>{stop();loadSource($('#src').value)};
@@ -335,4 +349,7 @@ document.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target
   if(e.key==='ArrowRight')$('#nu').click();else if(e.key==='ArrowLeft')$('#pu').click();else if(e.key===' '){e.preventDefault();$('#all').click()}});
 
 const q=new URLSearchParams(location.search);const s0=SOURCES[q.get('src')]?q.get('src'):'tts';$('#src').value=s0;loadSource(s0);
-</script></body></html>
+</script>
+<script src="feedback.js"></script>
+<script src="student.js"></script>
+</body></html>

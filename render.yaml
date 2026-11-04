@@ -1,0 +1,29 @@
+# Render Blueprint: Shloka learner app (static pages + student API) as ONE free web service in Singapore.
+# Render dashboard > New > Blueprint > pick this repo. No build step (standard library only).
+#
+# Student data (names, marks, practice scores) lives in SQLite. On the FREE plan the disk is wiped on every
+# deploy/restart, so for real students add a persistent disk (a paid starter plan) -- see the commented block --
+# or point DB_PATH at a mounted disk. Ask the owner before switching to a paid plan.
+services:
+  - type: web
+    name: shloka-learn
+    runtime: python
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: "echo no build step"
+    startCommand: python app/server.py
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.3"
+      - key: TEACHER_KEY        # password for /teacher.html; leave blank in the dashboard to switch the teacher view off
+        sync: false
+      # --- persistent storage (paid plans only): uncomment this block and the disk below ---
+      # - key: DB_PATH
+      #   value: /data/students.db
+    # disk:
+    #   name: students
+    #   mountPath: /data
+    #   sizeGB: 1
