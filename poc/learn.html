@@ -106,6 +106,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
   <label>Your-turn gap <select id="gap"><option value="0">none</option><option value="0.5">0.5× the line</option><option value="1" selected>1× the line</option><option value="1.5">1.5×</option><option value="2">2×</option><option value="3">3×</option></select></label>
   <label>Repeat each <select id="loop"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option></select></label>
   <label>Then <select id="auto"><option value="none">stop</option><option value="unit" selected>go to the next part</option><option value="verse">next part, then next verse</option></select></label>
+  <label>Hold the end of each part <select id="tail"><option value="0">as tagged</option><option value="0.1">+0.1 s</option><option value="0.2" selected>+0.2 s</option><option value="0.35">+0.35 s</option><option value="0.5">+0.5 s</option></select></label>
   <label>Pause between parts <select id="between"><option value="0.4">short</option><option value="0.9" selected>medium</option><option value="1.6">long</option></select></label>
   <label><span>Build-up (replay from the start)</span><input type="checkbox" id="cumul"></label>
   <label><span>Tone when it's your turn</span><input type="checkbox" id="cue" checked></label>
@@ -234,8 +235,8 @@ function stop(){tok++;untrack();if(srcNode){try{srcNode.stop()}catch(e){}srcNode
 async function playSpan(sp,my){await buf();if(my!==tok)return false;if(AC.state==='suspended')await AC.resume();
   const rate=+$('#speed').value;srcNode=AC.createBufferSource();srcNode.buffer=BUF;srcNode.playbackRate.value=rate;
   const g=AC.createGain();srcNode.connect(g);g.connect(AC.destination);
-  const s=Math.max(0,sp.start),e=Math.min(BUF.duration,sp.end),t=AC.currentTime,len=(e-s)/rate;
-  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(1,t+0.01);g.gain.setValueAtTime(1,Math.max(t+0.01,t+len-0.01));g.gain.linearRampToValueAtTime(0,t+len);
+  const tail=+$('#tail').value||0,s=Math.max(0,sp.start),e=Math.min(BUF.duration,sp.end+tail),t=AC.currentTime,len=(e-s)/rate; // tail: let a long final vowel ring out
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(1,t+0.01);const fo=Math.min(0.06,len/3);g.gain.setValueAtTime(1,Math.max(t+0.01,t+len-fo));g.gain.linearRampToValueAtTime(0,t+len);
   srcNode.start(t,s,e-s);T0=t;RATE=rate;SP={start:s};track();await sleep(len*1000+30);untrack();return my===tok}
 async function hold(sec,my){const end=performance.now()+sec*1000;while(performance.now()<end){if(my!==tok)return false;await sleep(30)}return my===tok}
 function cue(kind){if(!$('#cue').checked)return;if(AC.state==='suspended')AC.resume();const t0=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
@@ -272,7 +273,7 @@ $('#pu').onclick=()=>{if(RUN)session(Math.max(0,SELI-1));else choose(SELI-1,true
 $('#nu').onclick=()=>{if(RUN)session(Math.min(UN.length-1,SELI+1));else choose(SELI+1,true)};
 function paintSummary(){const g=+$('#gap').value;$('#sum').textContent=`Gap ${g?g+'×':'off'} · repeat ${$('#loop').value}× · ${({none:'stop after',unit:'then next part',verse:'then next verse'})[$('#auto').value]}`}
 $('#sum').onclick=()=>openSheet('#setSheet');
-['#gap','#loop','#auto','#between','#cumul','#cue','#speed'].forEach(id=>{const el=$(id),k='shlokaP'+id,v=lsGet(k,null);
+['#gap','#loop','#auto','#between','#cumul','#cue','#speed','#tail'].forEach(id=>{const el=$(id),k='shlokaP'+id,v=lsGet(k,null);
   if(v!==null){if(el.type==='checkbox')el.checked=v==='1';else el.value=v}
   el.onchange=()=>{lsSet(k,el.type==='checkbox'?(el.checked?'1':'0'):el.value);paintSummary()}});
 
