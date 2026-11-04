@@ -1,0 +1,113 @@
+{
+ "id": "18.66",
+ "dur": 10.05,
+ "halves": [
+  {
+   "start": 0.0,
+   "end": 4.55
+  },
+  {
+   "start": 5.1,
+   "end": 10.05
+  }
+ ],
+ "words": [
+  {
+   "iast": "sarva-dharmān",
+   "start": 0.08,
+   "end": 1.141,
+   "half": 0,
+   "synonym": "sarva-dharmān",
+   "meaning": "all varieties of religion"
+  },
+  {
+   "iast": "parityajya",
+   "start": 1.241,
+   "end": 2.062,
+   "half": 0,
+   "synonym": "parityajya",
+   "meaning": "abandoning"
+  },
+  {
+   "iast": "mām",
+   "start": 2.162,
+   "end": 2.462,
+   "half": 0,
+   "synonym": "mām",
+   "meaning": "unto Me"
+  },
+  {
+   "iast": "ekaṁ",
+   "start": 2.543,
+   "end": 2.923,
+   "half": 0,
+   "synonym": "ekam",
+   "meaning": "only"
+  },
+  {
+   "iast": "śaraṇaṁ",
+   "start": 3.103,
+   "end": 3.564,
+   "half": 0,
+   "synonym": "śaraṇam",
+   "meaning": "for surrender"
+  },
+  {
+   "iast": "vraja",
+   "start": 3.684,
+   "end": 3.964,
+   "half": 0,
+   "synonym": "vraja",
+   "meaning": "go"
+  },
+  {
+   "iast": "ahaṁ",
+   "start": 5.145,
+   "end": 5.425,
+   "half": 1,
+   "synonym": "aham",
+   "meaning": "I"
+  },
+  {
+   "iast": "tvāṁ",
+   "start": 5.546,
+   "end": 5.926,
+   "half": 1,
+   "synonym": "tvām",
+   "meaning": "you"
+  },
+  {
+   "iast": "sarva-pāpebhyo",
+   "start": 6.006,
+   "end": 7.247,
+   "half": 1,
+   "synonym": "sarva + pāpebhyaḥ",
+   "meaning": "all / from sinful reactions"
+  },
+  {
+   "iast": "mokṣayiṣyāmi",
+   "start": 7.507,
+   "end": 8.709,
+   "half": 1,
+   "synonym": "mokṣayiṣyāmi",
+   "meaning": "will deliver"
+  },
+  {
+   "iast": "mā",
+   "start": 8.769,
+   "end": 8.849,
+   "half": 1,
+   "synonym": "mā",
+   "meaning": "do not"
+  },
+  {
+   "iast": "śucaḥ",
+   "start": 9.069,
+   "end": 9.429,
+   "half": 1,
+   "synonym": "śucaḥ",
+   "meaning": "worry."
+  }
+ ],
+ "translation": "Abandon all varieties of religion and just surrender unto Me. I shall deliver you from all sinful reactions. Do not fear."
+}
