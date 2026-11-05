@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Learn a Shloka</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&family=Fraunces:ital,wght@0,400;0,600;1,400;1,600&family=Noto+Serif:ital,wght@0,400;0,600;1,400;1,600&family=Noto+Serif+Devanagari:wght@500;700&display=swap">
 <style>
@@ -11,7 +11,7 @@ html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
 body{display:grid;grid-template-rows:auto 1fr auto;height:100vh;height:100dvh;background:var(--paper);color:var(--ink);font:1rem/1.5 "DM Sans",system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
 button,select{font:inherit;color:var(--ink)}button{cursor:pointer}a{color:var(--teal)}:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
 .wrap{max-width:760px;margin:0 auto;padding:0 16px}
-.top{border-bottom:1px solid var(--line);background:var(--paper)}
+.top{border-bottom:1px solid var(--line);background:var(--paper);padding-top:env(safe-area-inset-top)}
 .bar1{display:flex;align-items:center;gap:8px;padding:10px 0 8px}
 .toc{flex:1;min-width:0;border:1px solid var(--line);background:var(--cream);border-radius:12px;padding:7px 12px;font-weight:600;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 select{padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--cream);max-width:100%}
@@ -215,16 +215,34 @@ for(const [k,s] of Object.entries(SOURCES)){const o=document.createElement('opti
 TIERS.forEach(([k,n])=>{const b=document.createElement('button');b.dataset.t=k;b.textContent=n;b.onclick=()=>{stop();tier=k;SELI=0;draw()};$('#tiers').append(b)});
 
 /* ---------- data: verses grouped by chapter ---------- */
+/* The 'tts' verses live in the server database: fetch only a small list first and each verse when it is opened.
+   Falls back to the bundled/static JSON when the server (or the database) is not available, and always inside the Android app. */
+const API_BASE=(window.Capacitor&&location.hostname==='localhost')?'https://shloka-learn.onrender.com/':'';
+const inApp=!!window.Capacitor;
+async function fetchJson(u,ms){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms||6000);try{const r=await fetch(u,{signal:c.signal});if(!r.ok)throw new Error(r.status);return await r.json()}finally{clearTimeout(t)}}
+async function staticAll(k){if(!DB[k]){try{DB[k]=await (await fetch(SOURCES[k].file)).json()}catch(e){DB[k]=[]}}return DB[k]}
+async function dbIndex(){if(inApp)return null;try{const j=await fetchJson('api/verses',5000);return j.ready?j.verses.map(v=>({id:v.id,chapter:String(v.chapter),shloka:v.shloka,stub:true})):null}catch(e){return null}}
+async function ensureVerse(v){if(!v.stub)return v;
+  try{const j=await fetchJson('api/verses/'+encodeURIComponent(v.id),8000);Object.assign(v,j);delete v.stub;return v}
+  catch(e){const all=await staticAll('tts'),f=all.find(x=>x.id===v.id);if(f){Object.assign(v,f);delete v.stub;return v}throw e}}
 async function loadSource(k){
-  if(!DB[k]){try{DB[k]=await (await fetch(SOURCES[k].file)).json()}catch(e){DB[k]=[]}}
-  LIST=DB[k].filter(v=>v.lines&&v.lines.length&&(!$('#onlyMarked').checked||(MK[v.id]||{}).star))
+  const idx=k==='tts'?await dbIndex():null;
+  if(!idx&&!DB[k]){await staticAll(k)}
+  LIST=(idx||DB[k]).filter(v=>(v.stub||(v.lines&&v.lines.length))&&(!$('#onlyMarked').checked||(MK[v.id]||{}).star))
     .sort((a,b)=>(+a.chapter-+b.chapter)||(parseInt(a.shloka)-parseInt(b.shloka)));
   if(!LIST.length){V=null;$('#block').innerHTML='<div class="empty">No verses here yet (or none marked).</div>';$('#tocBtn').textContent='No verses';return}
-  load(0)}
-function load(i){IDX=Math.max(0,Math.min(LIST.length-1,i));V=LIST[IDX];BUF=null;bufUrl=null;SELI=0;CHAP=V.chapter;draw();$('#scroll').scrollTop=0}
-function pick(i){stop();SFX.play('whoosh');load(i);if($('#autoplay').checked)session(0)}
+  await load(0)}
+let LOADSEQ=0;
+async function load(i){const my=++LOADSEQ;IDX=Math.max(0,Math.min(LIST.length-1,i));const v=LIST[IDX];
+  if(v.stub){$('#block').innerHTML='<div class="empty">Loading verse…</div>';$('#ref').textContent='Bhagavad-gītā '+v.id;$('#tocBtn').textContent='BG '+v.id+'  ▾'}
+  try{await ensureVerse(v)}catch(e){if(my===LOADSEQ)$('#block').innerHTML='<div class="empty">Could not load this verse. Check the connection and try again.</div>';return false}
+  if(my!==LOADSEQ)return false;                  // a newer verse was chosen meanwhile
+  V=v;BUF=null;bufUrl=null;SELI=0;CHAP=V.chapter;draw();$('#scroll').scrollTop=0;
+  const nx=LIST[IDX+1];if(nx&&nx.stub)ensureVerse(nx).catch(()=>{});   // warm the next verse
+  return true}
+async function pick(i){stop();SFX.play('whoosh');const ok=await load(i);if(ok&&$('#autoplay').checked)session(0);return ok}
 $('#src').onchange=e=>{stop();loadSource(e.target.value)};
-$('#dockNext').onclick=()=>{const was=RUN;pick(IDX+1);if(was&&!$('#autoplay').checked)session(0)};$('#vPrev').onclick=()=>pick(IDX-1);$('#vNext').onclick=()=>pick(IDX+1);$('#prev').onclick=()=>pick(IDX-1);$('#next').onclick=()=>pick(IDX+1);
+$('#dockNext').onclick=async()=>{const was=RUN;const ok=await pick(IDX+1);if(ok&&was&&!$('#autoplay').checked)session(0)};$('#vPrev').onclick=()=>pick(IDX-1);$('#vNext').onclick=()=>pick(IDX+1);$('#prev').onclick=()=>pick(IDX-1);$('#next').onclick=()=>pick(IDX+1);
 
 /* chapter -> verse sheet (like the app's chapter page) */
 function openSheet(id){$(id).classList.add('open')}
@@ -408,7 +426,7 @@ async function session(from){stop();const my=tok;setPlaying(true);touchDay();SFX
           if(!await hold(0.5,my))return}}
       if(auto==='none')return endRun(my);
       if(SELI<UN.length-1){if(!await hold(bt,my))return;SELI++}else break}
-    if(auto==='verse'&&IDX<LIST.length-1){stageSet('Next verse','',false);if(!await hold(bt*1.5,my))return;load(IDX+1);tokKeep(my)}
+    if(auto==='verse'&&IDX<LIST.length-1){stageSet('Next verse','',false);if(!await hold(bt*1.5,my))return;if(!await load(IDX+1))return;tokKeep(my)}
     else return endRun(my)}
   }finally{if(my===tok)endRun(my)}}
 function tokKeep(my){/* load() redraws but must not cancel the running session */}
