@@ -81,6 +81,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
 .hbtn{width:100%;border:0;border-radius:14px;background:var(--teal);color:#fff;padding:12px;font-weight:600}
 .iw .s{font:italic 400 .82rem/1.25 "Noto Serif",Georgia,serif;color:var(--blue);margin-top:2px}
 .full{font:500 1.15rem/1.8 "Noto Serif Devanagari",Georgia,serif;text-align:center;white-space:pre-line}
+.stars{color:#e0971a;letter-spacing:2px;margin-left:8px;font-size:.95em}.streak{color:var(--warn);font-weight:600}
 </style></head><body>
 <header class="top"><div class="wrap">
   <div class="bar1">
@@ -94,7 +95,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
 </div></header>
 
 <main class="scroll" id="scroll"><div class="wrap">
-  <div class="meta"><span class="ref"><span id="ref"></span><small id="chname"></small></span>
+  <div class="meta"><span class="ref"><span id="ref"></span><span class="stars" id="vstars" title="Chant level: best score on this verse (✦✦✦ = 90+, ✦✦ = 75+, ✦ = 50+)"></span><small id="chname"></small></span>
     <span><button class="chip" id="star" aria-pressed="false">☆ Mark</button> <button class="chip" id="done" aria-pressed="false">✓ Learned</button></span></div>
   <div class="block" id="block"></div>
   <p class="note hint" id="tierNote"></p>
@@ -134,6 +135,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
   <label>Then <select id="auto"><option value="none">stop</option><option value="unit" selected>go to the next part</option><option value="verse">next part, then next verse</option></select></label>
   <label>Hold the end of each part <select id="tail"><option value="0">as tagged</option><option value="0.1">+0.1 s</option><option value="0.2" selected>+0.2 s</option><option value="0.35">+0.35 s</option><option value="0.5">+0.5 s</option></select></label>
   <label>Pause between parts <select id="between"><option value="0.4">short</option><option value="0.9" selected>medium</option><option value="1.6">long</option></select></label>
+  <label><span>Sound effects and vibration</span><button class="pill" id="sfxOn" aria-pressed="true">On</button></label>
   <label><span>Start playing as soon as I open another verse</span><input type="checkbox" id="autoplay"></label>
   <label><span>Build-up (replay from the start)</span><input type="checkbox" id="cumul"></label>
   <label><span>Record me in "Your turn" and give feedback</span><button class="pill" id="fbOn" aria-pressed="false">Mic feedback</button></label>
@@ -211,7 +213,7 @@ async function loadSource(k){
   if(!LIST.length){V=null;$('#block').innerHTML='<div class="empty">No verses here yet (or none marked).</div>';$('#tocBtn').textContent='No verses';return}
   load(0)}
 function load(i){IDX=Math.max(0,Math.min(LIST.length-1,i));V=LIST[IDX];BUF=null;bufUrl=null;SELI=0;CHAP=V.chapter;draw();$('#scroll').scrollTop=0}
-function pick(i){stop();load(i);if($('#autoplay').checked)session(0)}
+function pick(i){stop();SFX.play('whoosh');load(i);if($('#autoplay').checked)session(0)}
 $('#src').onchange=e=>{stop();loadSource(e.target.value)};
 $('#vPrev').onclick=()=>pick(IDX-1);$('#vNext').onclick=()=>pick(IDX+1);$('#prev').onclick=()=>pick(IDX-1);$('#next').onclick=()=>pick(IDX+1);
 
@@ -226,7 +228,7 @@ function paintToc(){const by={};LIST.forEach((v,i)=>(by[v.chapter]=by[v.chapter]
     b.innerHTML=`Ch ${c}<small>${by[c].length} verse${by[c].length>1?'s':''}</small>`;b.onclick=()=>{CHAP=c;paintToc()};chs.append(b)});
   $('#chTitle').textContent=CHAP?`Chapter ${CHAP} · ${CH[+CHAP]||''}`:'';
   const vs=$('#vs');vs.innerHTML='';(by[CHAP]||[]).forEach(([v,i])=>{const x=MK[v.id]||{},b=document.createElement('button');
-    b.className=i===IDX?'cur':'';b.textContent=(x.star?'★ ':'')+v.shloka+(x.done?' ✓':'');b.onclick=()=>{pick(i);closeSheets()};vs.append(b)})}
+    b.className=i===IDX?'cur':'';b.textContent=(x.star?'★ ':'')+v.shloka+(x.done?' ✓':'')+(starText(v.id)?' '+starText(v.id):'');b.onclick=()=>{pick(i);closeSheets()};vs.append(b)})}
 $('#tocBtn').onclick=()=>{CHAP=V?V.chapter:CHAP;paintToc();openSheet('#tocSheet')};
 $('#gear').onclick=()=>openSheet('#setSheet');
 
@@ -329,6 +331,39 @@ async function playSpan(sp,my){await buf();if(my!==tok)return false;if(AC.state=
   const node=srcNode,done=new Promise(r=>{node.onended=r;setTimeout(r,len*1000+600)});   // next step only after the sound has really ended
   T0=t;RATE=rate;SP={start:s,end:sp.end};track();await done;untrack();return my===tok}
 async function hold(sec,my){const end=performance.now()+sec*1000;while(performance.now()<end){if(my!==tok)return false;await sleep(30)}return my===tok}
+/* ---------- sound effects (Web Audio, no files; same idea as Prayog's SFX bank), stars and streak ---------- */
+const SFX=(()=>{let on=lsGet('shlokaSfx','1')!=='0',master=null,last={};
+  const ready=()=>{if(!on)return null;try{if(!master){master=AC.createGain();master.gain.value=0.22;master.connect(AC.destination)}if(AC.state==='suspended')AC.resume();return AC}catch(e){return null}};
+  function tone(f,d,type,v,glide,delay,att){const a=ready();if(!a)return;const t0=a.currentTime+(delay||0),o=a.createOscillator(),g=a.createGain();
+    o.type=type||'sine';o.frequency.setValueAtTime(f,t0);if(glide)o.frequency.exponentialRampToValueAtTime(Math.max(20,glide),t0+d);
+    g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(v||0.5,t0+(att||0.012));g.gain.exponentialRampToValueAtTime(0.0001,t0+d);
+    o.connect(g);g.connect(master);o.start(t0);o.stop(t0+d+0.02)}
+  function noise(d,f0,f1,v){const a=ready();if(!a)return;const t0=a.currentTime,n=Math.floor(a.sampleRate*d),b=a.createBuffer(1,n,a.sampleRate),x=b.getChannelData(0);
+    for(let i=0;i<n;i++)x[i]=Math.random()*2-1;const src=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();src.buffer=b;f.type='bandpass';f.Q.value=0.8;
+    f.frequency.setValueAtTime(f0,t0);f.frequency.exponentialRampToValueAtTime(Math.max(40,f1),t0+d);g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(v,t0+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+d);src.connect(f);f.connect(g);g.connect(master);src.start(t0);src.stop(t0+d+0.02)}
+  const BANK={
+    click:()=>{tone(1400,0.03,'square',0.12);tone(700,0.04,'triangle',0.2,null,0.01)},
+    pop:()=>tone(500,0.09,'sine',0.45,1100),
+    whoosh:()=>noise(0.4,300,2400,0.35),
+    chime:()=>{tone(660,0.35,'sine',0.35);tone(990,0.45,'sine',0.22,null,0.08)},
+    good:()=>{tone(660,0.18,'triangle',0.4);tone(880,0.2,'triangle',0.4,null,0.12);tone(1320,0.5,'sine',0.3,null,0.26)},   // 75+: three rising bell notes
+    soft:()=>tone(392,0.35,'sine',0.25,330),                                                                              // low score: a gentle note, never a buzzer
+    star:n=>{for(let i=0;i<(n||1);i++)tone(880*Math.pow(1.25,i),0.3,'sine',0.3,null,i*0.13)},
+    conch:()=>{tone(196,1.3,'triangle',0.45,233,0,0.35);tone(392,1.1,'sine',0.15,466,0.05,0.4)},                         // verse learned
+    drum:()=>{tone(120,0.18,'sine',0.6,70);noise(0.06,500,250,0.25)}};
+  const play=(n,a)=>{if(!on)return;const now=Date.now(),gap=250;if(last[n]&&now-last[n]<gap)return;last[n]=now;try{BANK[n](a)}catch(e){}};
+  const buzz=p=>{try{if(on&&navigator.vibrate)navigator.vibrate(p)}catch(e){}};
+  return{play,buzz,isOn:()=>on,setOn:v=>{on=!!v;lsSet('shlokaSfx',on?'1':'0')}}})();
+const starsFor=sc=>sc>=90?3:sc>=75?2:sc>=50?1:0;
+const BEST=(()=>{try{return JSON.parse(lsGet('shlokaBest','{}'))}catch(e){return{}}})();
+const bestOf=id=>Math.max(BEST[id]||0,(typeof ST!=='undefined'&&ST.progress&&ST.progress[id]&&ST.progress[id].best)||0);
+const starText=id=>{const n=starsFor(bestOf(id));return n?'✦'.repeat(n)+'✧'.repeat(3-n):''};
+const dayKey=d=>{const t=new Date(d);return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0')};
+function touchDay(){let a=[];try{a=JSON.parse(lsGet('shlokaDays','[]'))}catch(e){}const k=dayKey(Date.now());if(!a.includes(k)){a.push(k);lsSet('shlokaDays',JSON.stringify(a.slice(-400)))}}
+function streak(){let a=[];try{a=JSON.parse(lsGet('shlokaDays','[]'))}catch(e){}const S=new Set(a);let d=Date.now(),n=0;
+  if(!S.has(dayKey(d)))d-=864e5;                 // today not done yet: the streak still stands until tomorrow ends
+  while(S.has(dayKey(d))){n++;d-=864e5}return n}
 function cue(kind){if(!$('#cue').checked)return;if(AC.state==='suspended')AC.resume();const t0=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
   o.type='sine';o.frequency.value=kind==='you'?660:440;g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(0.09,t0+0.015);g.gain.exponentialRampToValueAtTime(0.0001,t0+0.16);
   o.connect(g).connect(AC.destination);o.start(t0);o.stop(t0+0.18)}
@@ -341,7 +376,7 @@ function stageSet(txt,sub,turn){$('#stage').className='stage'+(turn?' turn':'');
 async function countdown(ms,my,u){const bar=$('#gapbar'),fill=$('#gapfill');bar.classList.add('on');[].concat(u.el).forEach(e=>e.classList.add('turn'));const t0=performance.now();
   for(;;){const el=performance.now()-t0;if(my!==tok)break;if(el>=ms)break;fill.style.width=(100*el/ms).toFixed(1)+'%';await sleep(40)}
   fill.style.width='0';bar.classList.remove('on');[].concat(u.el).forEach(e=>e.classList.remove('turn'));return my===tok}
-async function session(from){stop();const my=tok;setPlaying(true);SELI=from??SELI;
+async function session(from){stop();const my=tok;setPlaying(true);touchDay();SFX.play('pop');SELI=from??SELI;
   const reps=+$('#loop').value,gapF=+$('#gap').value,auto=$('#auto').value,bt=+$('#between').value,cumul=$('#cumul').checked;
   try{for(;;){
     while(SELI<UN.length){const u=UN[SELI],dur=u.span.end-u.span.start;paintSel();reveal(u.el);
@@ -379,6 +414,8 @@ const applyFs=()=>document.documentElement.style.setProperty('--fs',$('#fs').val
 $('#mic').onclick=()=>$('#fbOn').click();
 $('#helpBtn').onclick=()=>{closeSheets();openSheet('#helpSheet')};
 if(lsGet('shlokaHelpSeen','')!=='1'){lsSet('shlokaHelpSeen','1');setTimeout(()=>openSheet('#helpSheet'),600)}   // first visit only
+const paintSfx=()=>{$('#sfxOn').setAttribute('aria-pressed',SFX.isOn());$('#sfxOn').textContent=SFX.isOn()?'On':'Off'};
+$('#sfxOn').onclick=()=>{SFX.setOn(!SFX.isOn());paintSfx();SFX.play('click')};paintSfx();
 /* ---------- marks (saved on this device) ---------- */
 const MK=(()=>{try{return JSON.parse(localStorage.getItem('shlokaMarks')||'{}')}catch(e){return{}}})();
 let saveMk=()=>lsSet('shlokaMarks',JSON.stringify(MK));
@@ -387,11 +424,13 @@ function paintMarks(){const m=MK[V.id]||{};if(typeof clearFb==='function')clearF
   $('#done').classList.toggle('on',!!m.done);$('#done').setAttribute('aria-pressed',!!m.done);
   const inCh=LIST.filter(v=>v.chapter===V.chapter),learned=inCh.filter(v=>(MK[v.id]||{}).done).length;
   $('#progBar').style.width=(100*learned/Math.max(1,inCh.length))+'%';$('#markNote').textContent=`Chapter ${V.chapter}: ${learned} of ${inCh.length} learned`;
+  $('#vstars').textContent=starText(V.id);
+  {const n=streak();if(n)$('#markNote').innerHTML+=` · <span class="streak">${n}-day streak</span>`}
   $('#prev').disabled=IDX<=0;$('#next').disabled=IDX>=LIST.length-1;
   $('#vPrev').disabled=IDX<=0;$('#vNext').disabled=IDX>=LIST.length-1;
   $('#vPrev span').textContent=IDX>0?'BG '+LIST[IDX-1].id:'';$('#vNext span').textContent=IDX<LIST.length-1?'Next verse · BG '+LIST[IDX+1].id:'Last verse';if(typeof paintBest==='function')paintBest()}
-$('#star').onclick=()=>{const m=MK[V.id]=MK[V.id]||{};m.star=!m.star;saveMk();paintMarks()};
-$('#done').onclick=()=>{const m=MK[V.id]=MK[V.id]||{};m.done=!m.done;saveMk();paintMarks()};
+$('#star').onclick=()=>{const m=MK[V.id]=MK[V.id]||{};m.star=!m.star;saveMk();paintMarks();if(m.star)SFX.play('pop')};
+$('#done').onclick=()=>{const m=MK[V.id]=MK[V.id]||{};m.done=!m.done;saveMk();paintMarks();if(m.done){SFX.play('conch');SFX.buzz([30,50,30])}};
 $('#onlyMarked').onchange=()=>{stop();loadSource($('#src').value)};
 
 /* ---------- display toggles ---------- */
