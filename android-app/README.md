@@ -1,7 +1,7 @@
 # Android app (Capacitor)
 
-A thin native shell around `poc/learn.html` that **bundles the verses, purports and all 657 chant MP3s** (≈54 MB APK), so practice works offline.
-Student sign-in, marks sync and scores use the Render server (`https://shloka-learn.onrender.com`) when online; offline they stay on the device.
+A thin native shell around `poc/learn.html` (≈4 MB APK). It **reads verses, purports and chant audio from the server** (`https://shloka-learn.onrender.com`) and keeps what you have opened in the phone's Cache Storage, so those verses play offline afterwards.
+Student sign-in, marks sync and scores use the same server; the very first launch needs internet.
 
 Build (needs JDK 21 and the Android SDK with platform 34 + build-tools 34):
 ```
