@@ -126,6 +126,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
   <label>Then <select id="auto"><option value="none">stop</option><option value="unit" selected>go to the next part</option><option value="verse">next part, then next verse</option></select></label>
   <label>Hold the end of each part <select id="tail"><option value="0">as tagged</option><option value="0.1">+0.1 s</option><option value="0.2" selected>+0.2 s</option><option value="0.35">+0.35 s</option><option value="0.5">+0.5 s</option></select></label>
   <label>Pause between parts <select id="between"><option value="0.4">short</option><option value="0.9" selected>medium</option><option value="1.6">long</option></select></label>
+  <label><span>Start playing as soon as I open another verse</span><input type="checkbox" id="autoplay"></label>
   <label><span>Build-up (replay from the start)</span><input type="checkbox" id="cumul"></label>
   <label><span>Record me in "Your turn" and give feedback</span><button class="pill" id="fbOn" aria-pressed="false">Mic feedback</button></label>
   <p class="note" id="fbNote" style="margin:0"></p>
@@ -186,7 +187,7 @@ async function loadSource(k){
   if(!LIST.length){V=null;$('#block').innerHTML='<div class="empty">No verses here yet (or none marked).</div>';$('#tocBtn').textContent='No verses';return}
   load(0)}
 function load(i){IDX=Math.max(0,Math.min(LIST.length-1,i));V=LIST[IDX];BUF=null;bufUrl=null;SELI=0;CHAP=V.chapter;draw();$('#scroll').scrollTop=0}
-function pick(i){stop();load(i)}
+function pick(i){stop();load(i);if($('#autoplay').checked)session(0)}
 $('#src').onchange=e=>{stop();loadSource(e.target.value)};
 $('#vPrev').onclick=()=>pick(IDX-1);$('#vNext').onclick=()=>pick(IDX+1);$('#prev').onclick=()=>pick(IDX-1);$('#next').onclick=()=>pick(IDX+1);
 
@@ -340,7 +341,7 @@ $('#pu').onclick=()=>{if(RUN)session(Math.max(0,SELI-1));else choose(SELI-1,true
 $('#nu').onclick=()=>{if(RUN)session(Math.min(UN.length-1,SELI+1));else choose(SELI+1,true)};
 function paintSummary(){const g=+$('#gap').value;$('#sum').textContent=`Gap ${g?g+'×':'off'} · repeat ${$('#loop').value}× · ${({none:'stop after',unit:'then next part',verse:'then next verse'})[$('#auto').value]}`}
 $('#sum').onclick=()=>openSheet('#setSheet');
-['#gap','#loop','#auto','#between','#cumul','#cue','#speed','#tail','#fs'].forEach(id=>{const el=$(id),k='shlokaP'+id,v=lsGet(k,null);
+['#gap','#loop','#auto','#between','#cumul','#cue','#speed','#tail','#fs','#autoplay'].forEach(id=>{const el=$(id),k='shlokaP'+id,v=lsGet(k,null);
   if(v!==null){if(el.type==='checkbox')el.checked=v==='1';else el.value=v}
   el.onchange=()=>{lsSet(k,el.type==='checkbox'?(el.checked?'1':'0'):el.value);paintSummary()}});
 
