@@ -2,18 +2,20 @@
   "name": "shloka-learn-android",
   "version": "0.3.2",
   "private": true,
-  "description": "Android wrapper (Capacitor) for the Shloka learner page; bundles the verses and chant audio so it works offline",
+  "description": "Mobile app wrapper (Capacitor for Android & iOS) for Shloka Learn",
   "scripts": {
     "www": "bash ../scripts/build_www.sh",
-    "sync": "npm run www && npx cap sync android",
+    "sync": "npm run www && npx cap sync",
     "apk": "npm run sync && cd android && ./gradlew assembleDebug",
-    "aab": "npm run sync && cd android && ./gradlew clean bundleRelease"
+    "aab": "npm run sync && cd android && ./gradlew clean bundleRelease",
+    "ios": "npm run sync && npx cap open ios"
   },
   "dependencies": {
     "@capacitor-community/text-to-speech": "^6.1.0",
     "@capacitor/android": "^7.6.10",
     "@capacitor/app": "^7.1.2",
     "@capacitor/cli": "^7.6.10",
-    "@capacitor/core": "^7.6.10"
+    "@capacitor/core": "^7.6.10",
+    "@capacitor/ios": "^7.6.10"
   }
 }
