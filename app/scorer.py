@@ -92,4 +92,5 @@ if __name__ == "__main__":
     load_model()
     port = int(os.environ.get("PORT", "8765"))
     print(f"scorer on :{port} ({'key required' if KEY else 'NO KEY: local use only'})", flush=True)
-    ThreadingHTTPServer(("0.0.0.0", port), H).serve_forever()
+    host = os.environ.get("HOST", "127.0.0.1")   # local only by default: the tunnel reaches it on this machine
+    ThreadingHTTPServer((host, port), H).serve_forever()
