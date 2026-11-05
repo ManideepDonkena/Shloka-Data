@@ -91,6 +91,8 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
 .stars{color:#e0971a;letter-spacing:2px;margin-left:8px;font-size:.95em}.streak{color:var(--warn);font-weight:600}
 .dkrow{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:6px;flex-wrap:wrap}.dkrow .sum{margin-top:0}
 .dkn{border:1px solid var(--teal);background:transparent;color:var(--teal);border-radius:999px;padding:5px 14px;font-weight:600;font-size:.92rem}.dkn:disabled{opacity:.35;cursor:default}
+.say{float:right;border:1px solid var(--line);background:var(--cream);border-radius:999px;padding:3px 12px;font:600 .8rem "DM Sans";color:var(--ink);text-transform:none;letter-spacing:0}
+.purp .say{float:none;margin-bottom:10px}.say[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:#fff}
 </style></head><body>
 <header class="top"><div class="wrap">
   <div class="bar1">
@@ -109,8 +111,8 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
   <div class="block" id="block"></div>
   <p class="note hint" id="tierNote"></p>
   <details class="tr" id="fullv"><summary>Full verse, as chanted (sandhi joined)</summary><div class="full" id="fullTxt"></div></details>
-  <section class="card"><h4>Translation</h4><div id="tr"></div></section>
-  <details class="purpd" id="purp"><summary>Purport <small id="purpMeta"></small></summary><div id="purpTxt" class="purp"></div></details>
+  <section class="card"><h4>Translation <button class="say" id="sayTr" type="button" aria-label="Listen to the translation">🔊 Listen</button></h4><div id="tr"></div></section>
+  <details class="purpd" id="purp"><summary>Purport <small id="purpMeta"></small></summary><div class="purp"><button class="say" id="sayPu" type="button">🔊 Listen to the purport</button></div><div id="purpTxt" class="purp"></div></details>
   <div class="prog"><i id="progBar"></i></div><div class="note" id="markNote" style="margin-top:4px;text-align:center"></div>
   <div class="vnav"><button id="vPrev">‹ <span></span></button><button id="vNext"><span></span> ›</button></div>
 </div></main>
@@ -150,6 +152,8 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
   <label><span>Build-up (replay from the start)</span><input type="checkbox" id="cumul"></label>
   <label><span>Record me in "Your turn" and give feedback</span><button class="pill" id="fbOn" aria-pressed="false">Mic feedback</button></label>
   <p class="note" id="fbNote" style="margin:0"></p>
+  <label><span>Before each part, play every word and say its meaning</span><input type="checkbox" id="meanFirst"></label>
+  <label>Speaking speed (meanings, translation) <select id="speakRate"><option value="0.8">slow</option><option value="0.95" selected>normal</option><option value="1.15">fast</option></select></label>
   <label><span>Tone when it's your turn</span><input type="checkbox" id="cue" checked></label>
   <h4>Audio</h4>
   <label>Source <select id="src"></select></label>
@@ -176,7 +180,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
     <li><div><b>Tune it in ⚙ Settings</b><span>Gap length, repeats, speed (pitch stays natural), “Hold the end” for long vowels, Build-up (replay everything so far and chant it all), text size.</span></div></li>
     <li><div><b>Get feedback with 🎤</b><span>Switch the mic on, use headphones, and chant in your turn. Each word gets a dot: green = heard clearly, orange = check it, red = not heard. The score is how clearly the words came through (it checks the sounds of the words, not your melody). Silence gets no score.</span></div></li>
     <li><div><b>Mark your progress</b><span>★ Mark verses to come back to, ✓ Learned when you know one. Under Settings → Student, add your name to keep progress and scores on any device.</span></div></li>
-    <li><div><b>Read the meaning</b><span>Scroll down for the translation and Prabhupāda’s purport.</span></div></li>
+    <li><div><b>Understand the meaning</b><span>Scroll down for the translation and Prabhupāda’s purport, and tap 🔊 to hear them read. In ⚙ Settings, “say its meaning” plays each word and then speaks its meaning before you practise a part.</span></div></li>
   </ol>
   <button class="hbtn" data-close>Start</button>
 </div></div></div>
@@ -329,7 +333,26 @@ function track(){cancelAnimationFrame(raf);const f=()=>{if(!SP)return;const t=Ma
   ALLW.forEach(({w,e})=>e.classList.toggle('now',w.word_audio.start>=SP.start-0.005&&w.word_audio.end<=SP.end+0.005&&t>=w.word_audio.start&&t<w.word_audio.end));raf=requestAnimationFrame(f)};f()}
 function untrack(){SP=null;cancelAnimationFrame(raf);ALLW.forEach(({e})=>e.classList.remove('now'))}
 function setPlaying(p){RUN=p;const b=$('#all');b.textContent=p?'■':'▶';b.setAttribute('aria-pressed',p);b.setAttribute('aria-label',p?'Stop':'Start practice')}
-function stop(){tok++;untrack();if(srcNode){try{srcNode.stop()}catch(e){}srcNode=null}
+/* Spoken English for meanings, the translation and the purport: the device's own text-to-speech. Inside the Android app
+   the WebView has no speechSynthesis, so the native TextToSpeech plugin (@capacitor-community/text-to-speech) is used. */
+let _ttsp;const TTSP=()=>{if(_ttsp===undefined){try{_ttsp=window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()?window.Capacitor.registerPlugin('TextToSpeech'):null}catch(e){_ttsp=null}}return _ttsp};
+const speechOK=()=>!!(TTSP()||window.speechSynthesis);
+const enVoice=()=>{const vs=window.speechSynthesis?speechSynthesis.getVoices():[];return vs.find(v=>/en[-_]IN/i.test(v.lang))||vs.find(v=>/^en[-_](GB|US)/i.test(v.lang))||vs.find(v=>/^en/i.test(v.lang))};
+function speechStop(){try{window.speechSynthesis&&speechSynthesis.cancel()}catch(e){}try{TTSP()&&TTSP().stop()}catch(e){}}
+async function speak(text,my){text=String(text||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();   // an English voice reads 'Kuruksetra', not letter by letter
+  if(!text||my!==tok)return my===tok;const rate=+$('#speakRate').value||1;
+  if(TTSP()){try{await TTSP().speak({text,lang:'en-IN',rate,pitch:1,volume:1,category:'playback'})}catch(e){}return my===tok}
+  if(!window.speechSynthesis)return my===tok;
+  return new Promise(res=>{const u=new SpeechSynthesisUtterance(text),v=enVoice();if(v)u.voice=v;u.lang=v?v.lang:'en-IN';u.rate=rate;
+    let done=false;const fin=()=>{if(done)return;done=true;clearInterval(iv);res(my===tok)};u.onend=fin;u.onerror=fin;
+    const iv=setInterval(()=>{if(my!==tok){speechSynthesis.cancel();fin()}},100);
+    setTimeout(fin,3000+text.length*110/rate);                       // some engines never fire onend
+    speechSynthesis.speak(u)})}
+async function speakLong(text,my){                                    // long text in sentence-sized pieces (engines cut long ones)
+  const parts=String(text||'').split(/\n+/).flatMap(p=>p.match(/[^.!?]+[.!?]*["”’)]*\s*/g)||[p]);let buf='';
+  for(const s of parts){if((buf+s).length>220&&buf){if(!await speak(buf,my))return false;buf=''}buf+=s}
+  return buf?speak(buf,my):my===tok}
+function stop(){tok++;untrack();speechStop();if(srcNode){try{srcNode.stop()}catch(e){}srcNode=null}
   document.querySelectorAll('.turn').forEach(e=>e.classList.remove('turn'));$('#gapbar').classList.remove('on');$('#gapfill').style.width='0';
   if(RUN){setPlaying(false);paintSel()}}
 /* Pitch-preserving time-stretch (WSOLA). rate<1 = slower/longer, same pitch. x: Float32Array mono. */
@@ -409,7 +432,8 @@ function cue(kind){if(!$('#cue').checked)return;if(AC.state==='suspended')AC.res
   o.connect(g).connect(AC.destination);o.start(t0);o.stop(t0+0.18)}
 
 /* tap / ⏮ ⏭ : just hear that part once, no gap */
-async function preview(){stop();const my=tok,u=UN[SELI];if(!u)return;await playSpan(u.span,my)}
+async function preview(){stop();const my=tok,u=UN[SELI];if(!u)return;if(!await playSpan(u.span,my))return;
+  if(tier==='word'&&$('#meanFirst').checked&&speechOK()){const x=ALLW.find(a=>a.e===u.el);if(x){x.e.classList.add('now');await speak(x.w.meaning,my);x.e.classList.remove('now')}}}
 
 /* ▶ : the teacher session — listen, then a gap for you to chant it back, then on to the next part (and verse) */
 function stageSet(txt,sub,turn){$('#stage').className='stage'+(turn?' turn':'');$('#stage').innerHTML=`<b>${txt}</b>${sub?' · '+sub:''}`}
@@ -420,6 +444,11 @@ async function session(from){stop();const my=tok;setPlaying(true);touchDay();SFX
   const reps=+$('#loop').value,gapF=+$('#gap').value,auto=$('#auto').value,bt=+$('#between').value,cumul=$('#cumul').checked;
   try{for(;;){
     while(SELI<UN.length){const u=UN[SELI],dur=u.span.end-u.span.start;paintSel();reveal(u.el);
+      if($('#meanFirst').checked&&speechOK()){                     // understand first: each word, then its meaning
+        const ws=ALLW.filter(x=>x.w.word_audio.start>=u.span.start-0.005&&x.w.word_audio.end<=u.span.end+0.005);
+        for(const x of ws){stageSet('Meaning',x.w.token,false);if(!await playSpan(x.w.word_audio,my))return;
+          x.e.classList.add('now');const ok=await speak(x.w.meaning,my);x.e.classList.remove('now');if(!ok)return;if(!await hold(0.2,my))return}
+        if(!await hold(0.4,my))return}
       for(let r=0;r<reps;r++){
         stageSet('Listen',`${NAME[tier]==='Whole verse'?'':NAME[tier]+' '+(SELI+1)+'/'+UN.length+' · '}${r+1}/${reps}`,false);
         if(!await hold(0.35,my))return;if(!await playSpan(u.span,my))return;
@@ -450,7 +479,7 @@ $('#pu').onclick=()=>{if(RUN)session(Math.max(0,SELI-1));else choose(SELI-1,true
 $('#nu').onclick=()=>{if(RUN)session(Math.min(UN.length-1,SELI+1));else choose(SELI+1,true)};
 function paintSummary(){const g=+$('#gap').value;$('#sum').textContent=`Gap ${g?g+'×':'off'} · repeat ${$('#loop').value}× · ${({none:'stop after',unit:'then next part',verse:'then next verse'})[$('#auto').value]}`}
 $('#sum').onclick=()=>openSheet('#setSheet');
-['#gap','#loop','#auto','#between','#cumul','#cue','#speed','#tail','#fs','#autoplay','#fbwait'].forEach(id=>{const el=$(id),k='shlokaP'+id,v=lsGet(k,null);
+['#gap','#loop','#auto','#between','#cumul','#cue','#speed','#tail','#fs','#autoplay','#fbwait','#meanFirst','#speakRate'].forEach(id=>{const el=$(id),k='shlokaP'+id,v=lsGet(k,null);
   if(v!==null){if(el.type==='checkbox')el.checked=v==='1';else el.value=v}
   el.onchange=()=>{lsSet(k,el.type==='checkbox'?(el.checked?'1':'0'):el.value);paintSummary()}});
 
@@ -460,6 +489,13 @@ $('#helpBtn').onclick=()=>{closeSheets();openSheet('#helpSheet')};
 if(lsGet('shlokaHelpSeen','')!=='1'){lsSet('shlokaHelpSeen','1');setTimeout(()=>openSheet('#helpSheet'),600)}   // first visit only
 const paintSfx=()=>{$('#sfxOn').setAttribute('aria-pressed',SFX.isOn());$('#sfxOn').textContent=SFX.isOn()?'On':'Off'};
 $('#sfxOn').onclick=()=>{SFX.setOn(!SFX.isOn());paintSfx();SFX.play('click')};paintSfx();
+function sayButton(btn,getText,label){btn.onclick=async e=>{e.preventDefault();e.stopPropagation();
+  if(btn.getAttribute('aria-pressed')==='true'){stop();return}
+  if(!speechOK()){btn.textContent='No voice on this device';return}
+  stop();const my=tok;btn.setAttribute('aria-pressed','true');btn.textContent='■ Stop';
+  await speakLong(getText(),my);btn.setAttribute('aria-pressed','false');btn.textContent=label}}
+sayButton($('#sayTr'),()=>V?V.translation:'','🔊 Listen');
+sayButton($('#sayPu'),()=>$('#purpTxt').innerText,'🔊 Listen to the purport');
 /* ---------- marks (saved on this device) ---------- */
 const MK=(()=>{try{return JSON.parse(localStorage.getItem('shlokaMarks')||'{}')}catch(e){return{}}})();
 let saveMk=()=>lsSet('shlokaMarks',JSON.stringify(MK));
