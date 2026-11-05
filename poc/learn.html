@@ -217,11 +217,19 @@ TIERS.forEach(([k,n])=>{const b=document.createElement('button');b.dataset.t=k;b
 /* ---------- data: verses grouped by chapter ---------- */
 /* The 'tts' verses live in the server database: fetch only a small list first and each verse when it is opened.
    Falls back to the bundled/static JSON when the server (or the database) is not available, and always inside the Android app. */
-const API_BASE=(window.Capacitor&&location.hostname==='localhost')?'https://shloka-learn.onrender.com/':'';
+const API_BASE=window.SHLOKA_API!==undefined?window.SHLOKA_API:((window.Capacitor&&location.hostname==='localhost')?'https://shloka-learn.onrender.com/':'');
 const inApp=!!window.Capacitor;
-async function fetchJson(u,ms){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms||6000);try{const r=await fetch(u,{signal:c.signal});if(!r.ok)throw new Error(r.status);return await r.json()}finally{clearTimeout(t)}}
+/* Network with a timeout. In the Android app the downloaded verses and chant audio are also kept in Cache Storage, so what
+   you have opened once works offline (the APK itself carries no verses or audio). */
+const CACHE='shloka-v1',canCache=()=>inApp&&window.caches;
+async function netFetch(u,ms){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms||6000);try{const r=await fetch(u,{signal:c.signal});if(!r.ok)throw new Error(r.status);return r}finally{clearTimeout(t)}}
+async function cachedFetch(u,ms,cacheFirst){
+  if(canCache()&&cacheFirst){const m=await (await caches.open(CACHE)).match(u);if(m)return m}
+  try{const r=await netFetch(u,ms);if(canCache())(await caches.open(CACHE)).put(u,r.clone()).catch(()=>{});return r}
+  catch(e){if(canCache()){const m=await (await caches.open(CACHE)).match(u);if(m)return m}throw e}}
+async function fetchJson(u,ms){return (await cachedFetch(API_BASE+u,ms,false)).json()}
 async function staticAll(k){if(!DB[k]){try{DB[k]=await (await fetch(SOURCES[k].file)).json()}catch(e){DB[k]=[]}}return DB[k]}
-async function dbIndex(){if(inApp)return null;try{const j=await fetchJson('api/verses',5000);return j.ready?j.verses.map(v=>({id:v.id,chapter:String(v.chapter),shloka:v.shloka,stub:true})):null}catch(e){return null}}
+async function dbIndex(){try{const j=await fetchJson('api/verses',5000);return j.ready?j.verses.map(v=>({id:v.id,chapter:String(v.chapter),shloka:v.shloka,stub:true})):null}catch(e){return null}}
 async function ensureVerse(v){if(!v.stub)return v;
   try{const j=await fetchJson('api/verses/'+encodeURIComponent(v.id),8000);Object.assign(v,j);delete v.stub;return v}
   catch(e){const all=await staticAll('tts'),f=all.find(x=>x.id===v.id);if(f){Object.assign(v,f);delete v.stub;return v}throw e}}
@@ -230,7 +238,7 @@ async function loadSource(k){
   if(!idx&&!DB[k]){await staticAll(k)}
   LIST=(idx||DB[k]).filter(v=>(v.stub||(v.lines&&v.lines.length))&&(!$('#onlyMarked').checked||(MK[v.id]||{}).star))
     .sort((a,b)=>(+a.chapter-+b.chapter)||(parseInt(a.shloka)-parseInt(b.shloka)));
-  if(!LIST.length){V=null;$('#block').innerHTML='<div class="empty">No verses here yet (or none marked).</div>';$('#tocBtn').textContent='No verses';return}
+  if(!LIST.length){V=null;$('#block').innerHTML='<div class="empty">'+(inApp?'Connect to the internet once to download the verses.':'No verses here yet (or none marked).')+'</div>';$('#tocBtn').textContent='No verses';return}
   await load(0)}
 let LOADSEQ=0;
 async function load(i){const my=++LOADSEQ;IDX=Math.max(0,Math.min(LIST.length-1,i));const v=LIST[IDX];
@@ -313,7 +321,8 @@ function choose(i,play){SELI=Math.max(0,Math.min(UN.length-1,i));paintSel();reve
 let srcNode=null,raf=null,T0=0,SP=null,RATE=1;
 async function buf(){const u=V.audio;if(bufUrl===u&&BUF)return BUF;
   const url=u.startsWith('braja/')?'../BrajaBeats_Gita_MP3/'+encodeURIComponent(V.source_file||u.slice(6)):u;
-  BUF=await AC.decodeAudioData(await (await fetch(url)).arrayBuffer());bufUrl=u;return BUF}
+  const full=/^(https?:|\.\.)/.test(url)?url:API_BASE+url;
+  BUF=await AC.decodeAudioData(await (await cachedFetch(full,30000,true)).arrayBuffer());bufUrl=u;return BUF}
 function track(){cancelAnimationFrame(raf);const f=()=>{if(!SP)return;const t=Math.min(SP.start+(AC.currentTime-(AC.outputLatency||AC.baseLatency||0)-T0)*RATE,SP.end-0.001);
   /* only words inside the part being played are lit; the held tail never lights the next word */
   ALLW.forEach(({w,e})=>e.classList.toggle('now',w.word_audio.start>=SP.start-0.005&&w.word_audio.end<=SP.end+0.005&&t>=w.word_audio.start&&t<w.word_audio.end));raf=requestAnimationFrame(f)};f()}

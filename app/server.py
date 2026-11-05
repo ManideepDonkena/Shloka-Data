@@ -27,6 +27,7 @@ TEACHER_KEY = os.environ.get("TEACHER_KEY", "")
 MAX_BODY = 70 * 1024
 ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"          # no 0/O/1/I/L
 STATIC_OK = {".html", ".js", ".css", ".json", ".mp3", ".png", ".ico", ".svg", ".txt"}
+CORS_EXTRA = tuple(x for x in os.environ.get("CORS_ORIGINS", "").split(",") if x)   # extra allowed origins (testing)
 LOCK = threading.Lock()
 HITS = {}                                              # ip -> [timestamps], for sign-up / bad-code throttling
 
@@ -195,10 +196,14 @@ class H(SimpleHTTPRequestHandler):
     CORS_OK = ("https://localhost", "http://localhost", "capacitor://localhost")
 
     def cors(self):
+        pass                                        # kept for older call sites; headers are added once in end_headers()
+
+    def end_headers(self):
         o = self.headers.get("Origin", "")
-        if o in self.CORS_OK:                       # the Android app (Capacitor) calls this API from its own origin
+        if o and (o in self.CORS_OK or o in CORS_EXTRA):   # the Android app (Capacitor) loads the API and audio from its own origin
             self.send_header("Access-Control-Allow-Origin", o)
             self.send_header("Vary", "Origin")
+        super().end_headers()
 
     def do_OPTIONS(self):
         self.send_response(204)

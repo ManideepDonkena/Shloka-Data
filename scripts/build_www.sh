@@ -4,9 +4,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 W=android-app/www
 rm -rf "$W" && mkdir -p "$W"
-cp poc/learn.html poc/feedback.js poc/student.js poc/tts_data.json poc/purports.json "$W"/
-cp -r poc/audio-tts "$W"/audio-tts
-echo "www: $(du -sh "$W" | cut -f1), $(ls "$W"/audio-tts | wc -l) audio files"
+# Lite build: only the app shell. Verses, purports and chant audio are read from the server (and cached on the phone).
+cp poc/learn.html poc/feedback.js poc/student.js "$W"/
+echo "www: $(du -sh "$W" | cut -f1) (shell only)"
 cat > "$W/index.html" <<'H'
 <!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Shloka Learn</title>
 <script>location.replace('learn.html?src=tts')</script>
