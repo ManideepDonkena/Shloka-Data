@@ -176,7 +176,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
   </div>
   <button class="pill" id="helpBtn">How to use this page</button>
   <a href="privacy.html" class="note">Privacy policy</a>
-  <a href="index.html" class="note">Study &amp; tagging tools →</a>
+  <a href="index.html" class="note" id="studyToolsLink">Study &amp; tagging tools →</a>
 </div></div></div>
 
 <div class="sheet help" id="helpSheet" role="dialog" aria-label="How to use"><div class="bk" data-close></div><div class="pn"><div class="in">
@@ -234,12 +234,22 @@ const API_BASE=window.SHLOKA_API!==undefined?window.SHLOKA_API:((window.Capacito
 const inApp=!!window.Capacitor;
 /* Network with a timeout. In the Android app the downloaded verses and chant audio are also kept in Cache Storage, so what
    you have opened once works offline (the APK itself carries no verses or audio). */
-const CACHE='shloka-v1',canCache=()=>inApp&&window.caches;
+const CACHE='shloka-v1',canCache=()=>!!(window.caches&&(inApp||location.protocol==='https:'));
 async function netFetch(u,ms){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms||6000);try{const r=await fetch(u,{signal:c.signal});if(!r.ok)throw new Error(r.status);return r}finally{clearTimeout(t)}}
 async function cachedFetch(u,ms,cacheFirst){
-  if(canCache()&&cacheFirst){const m=await (await caches.open(CACHE)).match(u);if(m)return m}
-  try{const r=await netFetch(u,ms);if(canCache())(await caches.open(CACHE)).put(u,r.clone()).catch(()=>{});return r}
-  catch(e){if(canCache()){const m=await (await caches.open(CACHE)).match(u);if(m)return m}throw e}}
+  const offline=typeof navigator!=='undefined'&&navigator.onLine===false;
+  if(canCache()&&(cacheFirst||offline)){
+    try{const m=await (await caches.open(CACHE)).match(u);if(m)return m}catch(e){}
+  }
+  try{
+    const r=await netFetch(u,ms);
+    if(canCache()){try{(await caches.open(CACHE)).put(u,r.clone()).catch(()=>{})}catch(e){}}
+    return r;
+  }catch(e){
+    if(canCache()){try{const m=await (await caches.open(CACHE)).match(u);if(m)return m}catch(e2){}}
+    throw e;
+  }
+}
 async function fetchJson(u,ms){return (await cachedFetch(API_BASE+u,ms,false)).json()}
 async function staticAll(k){if(!DB[k]){try{DB[k]=await (await fetch(SOURCES[k].file)).json()}catch(e){DB[k]=[]}}return DB[k]}
 async function dbIndex(){try{const j=await fetchJson('api/verses',5000);return j.ready?j.verses.map(v=>({id:v.id,chapter:String(v.chapter),shloka:v.shloka,stub:true})):null}catch(e){return null}}
@@ -259,17 +269,49 @@ async function load(i){const my=++LOADSEQ;IDX=Math.max(0,Math.min(LIST.length-1,
   try{await ensureVerse(v)}catch(e){if(my===LOADSEQ)$('#block').innerHTML='<div class="empty">Could not load this verse. Check the connection and try again.</div>';return false}
   if(my!==LOADSEQ)return false;                  // a newer verse was chosen meanwhile
   V=v;BUF=null;bufUrl=null;SELI=0;CHAP=V.chapter;draw();$('#scroll').scrollTop=0;
-  const nx=LIST[IDX+1];if(nx&&nx.stub)ensureVerse(nx).catch(()=>{});   // warm the next verse
+  const nx=LIST[IDX+1];
+  if(nx){
+    if(nx.stub)ensureVerse(nx).catch(()=>{});
+    if(nx.audio&&canCache()){
+      const url=nx.audio.startsWith('braja/')?'../BrajaBeats_Gita_MP3/'+encodeURIComponent(nx.source_file||nx.audio.slice(6)):nx.audio;
+      const full=/^(https?:|\.\.)/.test(url)?url:API_BASE+url;
+      cachedFetch(full,30000,true).catch(()=>{});
+    }
+  }
   return true}
 async function pick(i){stop();SFX.play('whoosh');const ok=await load(i);if(ok&&$('#autoplay').checked)session(0);return ok}
 $('#src').onchange=e=>{stop();loadSource(e.target.value)};
 $('#dockNext').onclick=async()=>{const was=RUN;const ok=await pick(IDX+1);if(ok&&was&&!$('#autoplay').checked)session(0)};$('#vPrev').onclick=()=>pick(IDX-1);$('#vNext').onclick=()=>pick(IDX+1);$('#prev').onclick=()=>pick(IDX-1);$('#next').onclick=()=>pick(IDX+1);
 
 /* chapter -> verse sheet (like the app's chapter page) */
-function openSheet(id){$(id).classList.add('open')}
-function closeSheets(){document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open'))}
-document.querySelectorAll('[data-close]').forEach(e=>e.onclick=closeSheets);
+function openSheet(id){
+  const el=$(id);if(!el)return;
+  if(!el.classList.contains('open')){
+    el.classList.add('open');
+    try{history.pushState({sheet:id},'')}catch(e){}
+  }
+}
+function closeSheets(fromPop){
+  const had=document.querySelector('.sheet.open');
+  document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('open'));
+  if(had&&!fromPop&&history.state&&history.state.sheet){try{history.back()}catch(e){}}
+}
+document.querySelectorAll('[data-close]').forEach(e=>e.onclick=()=>closeSheets());
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheets()});
+window.addEventListener('popstate',()=>{if(document.querySelector('.sheet.open'))closeSheets(true)});
+
+const AppP=()=>{try{return(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()&&window.Capacitor.registerPlugin)?window.Capacitor.registerPlugin('App'):(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App)}catch(e){return null}};
+const setupApp=()=>{
+  const app=AppP();
+  if(app&&app.addListener){
+    app.addListener('backButton',({canGoBack})=>{
+      if(document.querySelector('.sheet.open')){closeSheets();return}
+      if(RUN){stop();return}
+      if(canGoBack){window.history.back()}else{app.exitApp()}
+    });
+  }
+};
+if(window.Capacitor){setupApp()}else{document.addEventListener('DOMContentLoaded',setupApp)}
 function paintToc(){const by={};LIST.forEach((v,i)=>(by[v.chapter]=by[v.chapter]||[]).push([v,i]));
   const chs=$('#chs');chs.innerHTML='';
   Object.keys(by).sort((a,b)=>a-b).forEach(c=>{const b=document.createElement('button');b.className='pill';b.setAttribute('aria-pressed',c===CHAP);
@@ -326,7 +368,9 @@ function playLecture(L,a,b,label){stop();const P=$('#lectPlayer');P.innerHTML=''
   const f=document.createElement('iframe');f.allow='autoplay; encrypted-media; picture-in-picture';f.allowFullscreen=true;f.title=label;
   f.src=`https://www.youtube-nocookie.com/embed/${encodeURIComponent(L.video)}?start=${Math.floor(a)}&end=${Math.ceil(b)}&autoplay=1&rel=0&modestbranding=1`;
   const y=document.createElement('a');y.className='yt';y.href=`https://www.youtube.com/watch?v=${encodeURIComponent(L.video)}&t=${Math.floor(a)}s`;y.target='_blank';y.rel='noopener';
-  y.textContent=`Open on YouTube at ${mmss(a)} (if the video does not play here)`;P.append(f,y);P.scrollIntoView({block:'nearest',behavior:'smooth'})}
+  y.textContent=`Open on YouTube at ${mmss(a)} (if the video does not play here)`;
+  y.onclick=e=>{if(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()){e.preventDefault();window.open(y.href,'_system')}};
+  P.append(f,y);P.scrollIntoView({block:'nearest',behavior:'smooth'})}
 async function paintLecture(){const box=$('#lect'),B=$('#lectBody');const want=V&&V.id;box.hidden=true;B.innerHTML='';$('#lectPlayer').innerHTML='';
   const all=await loadLectures();if(!V||V.id!==want)return;
   const here=all.filter(L=>L.verses&&L.verses[V.id]);if(!here.length)return;box.hidden=false;
@@ -342,7 +386,7 @@ async function paintLecture(){const box=$('#lect'),B=$('#lectBody');const want=V
 let PU=null;
 async function paintPurport(){const d=$('#purp'),t=$('#purpTxt');t.textContent='';
   let txt=(V.purport||'').trim();
-  if(!txt){if(!PU){try{PU=await (await fetch('purports.json')).json()}catch(e){PU={}}}txt=(PU[V.id]||'').trim()}
+  if(!txt){if(!PU){try{PU=await (await cachedFetch('purports.json',3000,true)).json()}catch(e){try{PU=await (await cachedFetch(API_BASE+'purports.json',8000,true)).json()}catch(e2){PU={}}}}txt=(PU[V.id]||'').trim()}
   d.hidden=!txt;d.open=false;if(!txt)return;
   const ps=txt.split(/\n+/).map(x=>x.trim()).filter(Boolean);
   ps.forEach(x=>{const p=document.createElement('p');p.textContent=x;t.append(p)});
@@ -408,7 +452,12 @@ function wsola(x0,rate,sr){
 
 /* Slower/faster WITHOUT changing pitch: playbackRate would shift the pitch (robotic), so the part being played is
    time-stretched first (WSOLA) and then played at normal rate. */
-async function playSpan(sp,my){await buf();if(my!==tok)return false;if(AC.state==='suspended')await AC.resume();
+async function playSpan(sp,my){
+  try{await buf()}catch(e){
+    stageSet('Audio unavailable',inApp?'Connect to internet once to download this audio.':'Could not load audio.',false);
+    return false;
+  }
+  if(my!==tok)return false;if(AC.state==='suspended')await AC.resume();
   const rate=+$('#speed').value,tail=+$('#tail').value||0;   // tail: let a long final vowel ring out
   const s=Math.max(0,sp.start);
   /* the hold must never reach the next word: stop a little before its onset */
@@ -553,6 +602,7 @@ document.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target
   if(e.key==='ArrowRight')$('#nu').click();else if(e.key==='ArrowLeft')$('#pu').click();else if(e.key===' '){e.preventDefault();$('#all').click()}});
 
 const q=new URLSearchParams(location.search);const s0=SOURCES[q.get('src')]?q.get('src'):'tts';$('#src').value=s0;loadSource(s0);
+if(inApp){const st=$('#studyToolsLink');if(st)st.style.display='none'}
 </script>
 <script src="feedback.js"></script>
 <script src="student.js"></script>
