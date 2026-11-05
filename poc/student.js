@@ -1,7 +1,6 @@
 /* Student account (name + private code, progress synced to the server) and chant feedback UI for learn.html.
    Loaded after learn.html's main script; uses its globals ($, MK, saveMk, AC, BUF, UN, SELI, ALLW, V, tier ...). */
-/* In the Android app the page is served from https://localhost, so the API lives on the real server. */
-const API_BASE=(window.Capacitor&&location.hostname==='localhost')?'https://shloka-learn.onrender.com/':'';
+/* API_BASE (defined in learn.html): in the Android app the API lives on the real server. */
 const api=async(m,p0,b)=>{const p=API_BASE+p0;const h={'Content-Type':'application/json'};const c=lsGet('shlokaCode','');if(c)h['X-Student-Code']=c;
   const r=await fetch(p,{method:m,headers:h,body:b===undefined?undefined:JSON.stringify(b)});let j={};try{j=await r.json()}catch(e){}
   if(!r.ok)throw Object.assign(new Error(j.error||r.status),{status:r.status});return j};
@@ -60,7 +59,13 @@ function analyse(u,clip){clearFb();const my=tok;
     let res;try{res=ChantFeedback.compare(ref,clip,others)}catch(e){res={ok:false,message:'Could not analyse that attempt.'}}
     if(!res.ok){showFb(null,res.message);return}
     res.words.forEach(w=>{const el=ws[w.idx]&&ws[w.idx].x.e;if(el)el.dataset.fb=w.note==='ok'?'good':'check'});
+    const prev=bestOf(V.id),sn=starsFor(res.score);touchDay();
     showFb(res);
+    if(res.score>prev){BEST[V.id]=res.score;lsSet('shlokaBest',JSON.stringify(BEST));
+      if(prev>0||res.score>=50){const t=document.createElement('div');t.textContent='New best for this verse!';t.className='fbl';$('#fbTxt').append(t)}
+      if(starsFor(res.score)>starsFor(prev)){setTimeout(()=>SFX.play('star',sn),600)}}
+    SFX.play(res.score>=75?'good':res.score>=50?'chime':'soft');SFX.buzz(res.score>=75?[25,40,25]:20);
+    $('#vstars').textContent=starText(V.id);
     if(lsGet('shlokaCode',''))api('POST','api/attempts',{verse:V.id,unit:tier,idx:SELI,score:res.score,sound:res.sound,pace:res.pace,ratio:res.ratio,
         detail:{w:res.words.map(w=>[w.token,w.score,w.note==='ok'?0:1])}}).then(()=>pull()).catch(()=>{})},30)}
 function showFb(r,msg){const b=$('#fb');b.hidden=false;

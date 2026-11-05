@@ -12,6 +12,8 @@ The page keeps the code in the browser; typing it on another device gives the sa
   POST /api/attempts          {verse, unit, idx, score, sound, pace, ratio, detail}
   GET  /api/attempts?verse=2.47                     -> this student's recent attempts
   GET  /api/teacher/students  (X-Teacher-Key = $TEACHER_KEY; disabled when unset) -> all students + summaries
+  GET  /api/verses            -> {ready, verses:[{id,chapter,shloka}]}   (ready=false while the database is being filled)
+  GET  /api/verses/<id>       -> the full verse (words, timings, meanings, translation, purport)
   GET  /healthz
 """
 import hashlib, hmac, json, os, re, secrets, sqlite3, sys, threading, time, urllib.request, urllib.error
@@ -75,7 +77,43 @@ SCHEMA = [
         verse TEXT NOT NULL, unit TEXT NOT NULL, idx INTEGER NOT NULL, score INTEGER, sound INTEGER, pace INTEGER,
         ratio REAL, detail TEXT, ts REAL NOT NULL)""",
     "CREATE INDEX IF NOT EXISTS att_student ON attempts(student_id, verse, ts)",
+    """CREATE TABLE IF NOT EXISTS verses(id TEXT PRIMARY KEY, chapter INTEGER NOT NULL, shloka TEXT NOT NULL, ord INTEGER NOT NULL,
+        h TEXT NOT NULL, data TEXT NOT NULL, purport TEXT NOT NULL DEFAULT '')""",
 ]
+
+
+# ---- verses: poc/tts_data.json + poc/purports.json are loaded into the database (re-seeded when a verse changes) -------
+VSTATE = {"total": 0, "done": 0, "ready": False, "error": ""}
+VCACHE = {}          # id -> JSON string of the full verse (the content only changes on a re-seed)
+VINDEX = {"t": 0, "body": None}
+
+
+def seed_verses():
+    try:
+        data = json.load(open(os.path.join(ROOT, "tts_data.json"), encoding="utf-8"))
+        try:
+            pur = json.load(open(os.path.join(ROOT, "purports.json"), encoding="utf-8"))
+        except OSError:
+            pur = {}
+        VSTATE["total"] = len(data)
+        have = {r["id"]: r["h"] for r in q("SELECT id, h FROM verses")}
+        VSTATE["done"] = 0
+        for i, v in enumerate(data):
+            body = json.dumps(v, ensure_ascii=False, separators=(",", ":"))
+            pp = pur.get(v["id"], "")
+            hh = hashlib.sha1((body + "|" + pp).encode()).hexdigest()
+            if have.get(v["id"]) != hh:
+                q("INSERT OR REPLACE INTO verses(id,chapter,shloka,ord,h,data,purport) VALUES(?,?,?,?,?,?,?)",
+                  (v["id"], int(v["chapter"]), str(v["shloka"]), i, hh, body, pp))
+                VCACHE.pop(v["id"], None)
+            VSTATE["done"] += 1
+        VINDEX["body"] = None
+        VSTATE["ready"] = True
+        sys.stderr.write("verses ready: %d in the database\n" % len(data))
+    except Exception as e:                      # the site keeps working from the static files if this fails
+        VSTATE["error"] = str(e)[:200]
+        sys.stderr.write("verse seeding failed: %s\n" % e)
+
 
 
 def init():
@@ -197,6 +235,34 @@ class H(SimpleHTTPRequestHandler):
                 q("INSERT INTO students(name,code_hash,created,seen) VALUES(?,?,?,?)", (name, h(raw), time.time(), time.time()))
                 return self.send_json({"name": name, "code": "-".join(raw[i:i + 4] for i in (0, 4, 8))}, 201)
 
+            if method == "GET" and p == "/api/verses":
+                if not VSTATE["ready"]:
+                    return self.send_json({"ready": False, "done": VSTATE["done"], "total": VSTATE["total"], "error": VSTATE["error"]})
+                if VINDEX["body"] is None or time.time() - VINDEX["t"] > 600:
+                    rows = q("SELECT id, chapter, shloka FROM verses ORDER BY ord")
+                    VINDEX["body"], VINDEX["t"] = rows, time.time()
+                return self.send_json({"ready": True, "verses": VINDEX["body"]})
+            if method == "GET" and p.startswith("/api/verses/"):
+                vid = p[len("/api/verses/"):]
+                if not re.fullmatch(r"\d{1,2}\.\d{1,3}(-\d{1,3})?", vid):
+                    return self.send_json({"error": "bad id"}, 400)
+                if vid not in VCACHE:
+                    rows = q("SELECT data, purport FROM verses WHERE id=?", (vid,))
+                    if not rows:
+                        return self.send_json({"error": "not found"}, 404)
+                    d = json.loads(rows[0]["data"])
+                    d["purport"] = rows[0]["purport"]
+                    VCACHE[vid] = json.dumps(d, ensure_ascii=False)
+                b = VCACHE[vid].encode()
+                self.send_response(200)
+                self.cors()
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(b)))
+                self.send_header("Cache-Control", "public, max-age=3600")
+                self.end_headers()
+                self.wfile.write(b)
+                return
+
             if p == "/api/teacher/students" and method == "GET":
                 if not TEACHER_KEY:
                     return self.send_json({"error": "teacher view is off: set TEACHER_KEY in the server's environment"}, 503)
@@ -261,6 +327,7 @@ if __name__ == "__main__":
         init()
     except DbError as e:
         sys.exit(f"cannot reach the database: {e}\nCheck CF_ACCOUNT_ID, CF_D1_DATABASE_ID and CF_API_TOKEN (token needs 'D1 Edit').")
+    threading.Thread(target=seed_verses, daemon=True).start()
     port = int(os.environ.get("PORT", "8000"))
     print(f"serving {ROOT} + API on :{port}, db {'Cloudflare D1' if USE_D1 else DB_PATH}, teacher view {'on' if TEACHER_KEY else 'off'}", flush=True)
     ThreadingHTTPServer(("0.0.0.0", port), H).serve_forever()

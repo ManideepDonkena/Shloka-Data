@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Learn a Shloka</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&family=Fraunces:ital,wght@0,400;0,600;1,400;1,600&family=Noto+Serif:ital,wght@0,400;0,600;1,400;1,600&family=Noto+Serif+Devanagari:wght@500;700&display=swap">
 <style>
@@ -11,7 +11,7 @@ html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
 body{display:grid;grid-template-rows:auto 1fr auto;height:100vh;height:100dvh;background:var(--paper);color:var(--ink);font:1rem/1.5 "DM Sans",system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
 button,select{font:inherit;color:var(--ink)}button{cursor:pointer}a{color:var(--teal)}:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
 .wrap{max-width:760px;margin:0 auto;padding:0 16px}
-.top{border-bottom:1px solid var(--line);background:var(--paper)}
+.top{border-bottom:1px solid var(--line);background:var(--paper);padding-top:env(safe-area-inset-top)}
 .bar1{display:flex;align-items:center;gap:8px;padding:10px 0 8px}
 .toc{flex:1;min-width:0;border:1px solid var(--line);background:var(--cream);border-radius:12px;padding:7px 12px;font-weight:600;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 select{padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--cream);max-width:100%}
@@ -20,7 +20,7 @@ select{padding:8px 10px;border-radius:12px;border:1px solid var(--line);backgrou
 .seg button{border:0;background:transparent;border-radius:11px;padding:6px 2px;line-height:1.2;font-size:.92rem}
 .seg button[aria-pressed=true]{background:var(--gold);color:#183b45;font-weight:600}
 .scroll{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;min-height:0}
-.scroll .wrap{padding-top:14px;padding-bottom:28px}
+.scroll .wrap{padding-top:14px;padding-bottom:calc(56px + env(safe-area-inset-bottom))}   /* room so the last buttons are never under the player */
 .meta{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .meta .ref{font:600 1.15rem "Noto Serif",Georgia,serif}.meta small{display:block;font:400 .88rem "DM Sans";color:var(--muted)}
 .chip{border:1px solid var(--line);background:var(--cream);border-radius:999px;padding:5px 12px;font-size:.88rem}
@@ -88,6 +88,9 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
 .hbtn{width:100%;border:0;border-radius:14px;background:var(--teal);color:#fff;padding:12px;font-weight:600}
 .iw .s{font:italic 400 .82rem/1.25 "Noto Serif",Georgia,serif;color:var(--blue);margin-top:2px}
 .full{font:500 1.15rem/1.8 "Noto Serif Devanagari",Georgia,serif;text-align:center;white-space:pre-line}
+.stars{color:#e0971a;letter-spacing:2px;margin-left:8px;font-size:.95em}.streak{color:var(--warn);font-weight:600}
+.dkrow{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:6px;flex-wrap:wrap}.dkrow .sum{margin-top:0}
+.dkn{border:1px solid var(--teal);background:transparent;color:var(--teal);border-radius:999px;padding:5px 14px;font-weight:600;font-size:.92rem}.dkn:disabled{opacity:.35;cursor:default}
 </style></head><body>
 <header class="top"><div class="wrap">
   <div class="bar1">
@@ -101,7 +104,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
 </div></header>
 
 <main class="scroll" id="scroll"><div class="wrap">
-  <div class="meta"><span class="ref"><span id="ref"></span><small id="chname"></small></span>
+  <div class="meta"><span class="ref"><span id="ref"></span><span class="stars" id="vstars" title="Chant level: best score on this verse (✦✦✦ = 90+, ✦✦ = 75+, ✦ = 50+)"></span><small id="chname"></small></span>
     <span><button class="chip" id="star" aria-pressed="false">☆ Mark</button> <button class="chip" id="done" aria-pressed="false">✓ Learned</button></span></div>
   <div class="block" id="block"></div>
   <p class="note hint" id="tierNote"></p>
@@ -121,7 +124,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
     <button class="big" id="all" aria-label="Start practice" aria-pressed="false">▶</button>
     <button class="ic" id="nu" aria-label="Next">⏭</button>
   </div>
-  <button class="sum" id="sum"></button>
+  <div class="dkrow"><button class="sum" id="sum"></button><button class="dkn" id="dockNext">Next verse ›</button></div>
 </div></footer>
 
 <div class="sheet" id="tocSheet" role="dialog" aria-label="Choose a verse"><div class="bk" data-close></div><div class="pn"><div class="in">
@@ -141,6 +144,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
   <label>Then <select id="auto"><option value="none">stop</option><option value="unit" selected>go to the next part</option><option value="verse">next part, then next verse</option></select></label>
   <label>Hold the end of each part <select id="tail"><option value="0">as tagged</option><option value="0.1">+0.1 s</option><option value="0.2" selected>+0.2 s</option><option value="0.35">+0.35 s</option><option value="0.5">+0.5 s</option></select></label>
   <label>Pause between parts <select id="between"><option value="0.4">short</option><option value="0.9" selected>medium</option><option value="1.6">long</option></select></label>
+  <label><span>Sound effects and vibration</span><button class="pill" id="sfxOn" aria-pressed="true">On</button></label>
   <label><span>Start playing as soon as I open another verse</span><input type="checkbox" id="autoplay"></label>
   <label><span>Build-up (replay from the start)</span><input type="checkbox" id="cumul"></label>
   <label><span>Record me in "Your turn" and give feedback</span><button class="pill" id="fbOn" aria-pressed="false">Mic feedback</button></label>
@@ -211,16 +215,34 @@ for(const [k,s] of Object.entries(SOURCES)){const o=document.createElement('opti
 TIERS.forEach(([k,n])=>{const b=document.createElement('button');b.dataset.t=k;b.textContent=n;b.onclick=()=>{stop();tier=k;SELI=0;draw()};$('#tiers').append(b)});
 
 /* ---------- data: verses grouped by chapter ---------- */
+/* The 'tts' verses live in the server database: fetch only a small list first and each verse when it is opened.
+   Falls back to the bundled/static JSON when the server (or the database) is not available, and always inside the Android app. */
+const API_BASE=(window.Capacitor&&location.hostname==='localhost')?'https://shloka-learn.onrender.com/':'';
+const inApp=!!window.Capacitor;
+async function fetchJson(u,ms){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms||6000);try{const r=await fetch(u,{signal:c.signal});if(!r.ok)throw new Error(r.status);return await r.json()}finally{clearTimeout(t)}}
+async function staticAll(k){if(!DB[k]){try{DB[k]=await (await fetch(SOURCES[k].file)).json()}catch(e){DB[k]=[]}}return DB[k]}
+async function dbIndex(){if(inApp)return null;try{const j=await fetchJson('api/verses',5000);return j.ready?j.verses.map(v=>({id:v.id,chapter:String(v.chapter),shloka:v.shloka,stub:true})):null}catch(e){return null}}
+async function ensureVerse(v){if(!v.stub)return v;
+  try{const j=await fetchJson('api/verses/'+encodeURIComponent(v.id),8000);Object.assign(v,j);delete v.stub;return v}
+  catch(e){const all=await staticAll('tts'),f=all.find(x=>x.id===v.id);if(f){Object.assign(v,f);delete v.stub;return v}throw e}}
 async function loadSource(k){
-  if(!DB[k]){try{DB[k]=await (await fetch(SOURCES[k].file)).json()}catch(e){DB[k]=[]}}
-  LIST=DB[k].filter(v=>v.lines&&v.lines.length&&(!$('#onlyMarked').checked||(MK[v.id]||{}).star))
+  const idx=k==='tts'?await dbIndex():null;
+  if(!idx&&!DB[k]){await staticAll(k)}
+  LIST=(idx||DB[k]).filter(v=>(v.stub||(v.lines&&v.lines.length))&&(!$('#onlyMarked').checked||(MK[v.id]||{}).star))
     .sort((a,b)=>(+a.chapter-+b.chapter)||(parseInt(a.shloka)-parseInt(b.shloka)));
   if(!LIST.length){V=null;$('#block').innerHTML='<div class="empty">No verses here yet (or none marked).</div>';$('#tocBtn').textContent='No verses';return}
-  load(0)}
-function load(i){IDX=Math.max(0,Math.min(LIST.length-1,i));V=LIST[IDX];BUF=null;bufUrl=null;SELI=0;CHAP=V.chapter;draw();$('#scroll').scrollTop=0}
-function pick(i){stop();load(i);if($('#autoplay').checked)session(0)}
+  await load(0)}
+let LOADSEQ=0;
+async function load(i){const my=++LOADSEQ;IDX=Math.max(0,Math.min(LIST.length-1,i));const v=LIST[IDX];
+  if(v.stub){$('#block').innerHTML='<div class="empty">Loading verse…</div>';$('#ref').textContent='Bhagavad-gītā '+v.id;$('#tocBtn').textContent='BG '+v.id+'  ▾'}
+  try{await ensureVerse(v)}catch(e){if(my===LOADSEQ)$('#block').innerHTML='<div class="empty">Could not load this verse. Check the connection and try again.</div>';return false}
+  if(my!==LOADSEQ)return false;                  // a newer verse was chosen meanwhile
+  V=v;BUF=null;bufUrl=null;SELI=0;CHAP=V.chapter;draw();$('#scroll').scrollTop=0;
+  const nx=LIST[IDX+1];if(nx&&nx.stub)ensureVerse(nx).catch(()=>{});   // warm the next verse
+  return true}
+async function pick(i){stop();SFX.play('whoosh');const ok=await load(i);if(ok&&$('#autoplay').checked)session(0);return ok}
 $('#src').onchange=e=>{stop();loadSource(e.target.value)};
-$('#vPrev').onclick=()=>pick(IDX-1);$('#vNext').onclick=()=>pick(IDX+1);$('#prev').onclick=()=>pick(IDX-1);$('#next').onclick=()=>pick(IDX+1);
+$('#dockNext').onclick=async()=>{const was=RUN;const ok=await pick(IDX+1);if(ok&&was&&!$('#autoplay').checked)session(0)};$('#vPrev').onclick=()=>pick(IDX-1);$('#vNext').onclick=()=>pick(IDX+1);$('#prev').onclick=()=>pick(IDX-1);$('#next').onclick=()=>pick(IDX+1);
 
 /* chapter -> verse sheet (like the app's chapter page) */
 function openSheet(id){$(id).classList.add('open')}
@@ -233,7 +255,7 @@ function paintToc(){const by={};LIST.forEach((v,i)=>(by[v.chapter]=by[v.chapter]
     b.innerHTML=`Ch ${c}<small>${by[c].length} verse${by[c].length>1?'s':''}</small>`;b.onclick=()=>{CHAP=c;paintToc()};chs.append(b)});
   $('#chTitle').textContent=CHAP?`Chapter ${CHAP} · ${CH[+CHAP]||''}`:'';
   const vs=$('#vs');vs.innerHTML='';(by[CHAP]||[]).forEach(([v,i])=>{const x=MK[v.id]||{},b=document.createElement('button');
-    b.className=i===IDX?'cur':'';b.textContent=(x.star?'★ ':'')+v.shloka+(x.done?' ✓':'');b.onclick=()=>{pick(i);closeSheets()};vs.append(b)})}
+    b.className=i===IDX?'cur':'';b.textContent=(x.star?'★ ':'')+v.shloka+(x.done?' ✓':'')+(starText(v.id)?' '+starText(v.id):'');b.onclick=()=>{pick(i);closeSheets()};vs.append(b)})}
 $('#tocBtn').onclick=()=>{CHAP=V?V.chapter:CHAP;paintToc();openSheet('#tocSheet')};
 $('#gear').onclick=()=>openSheet('#setSheet');
 
@@ -339,6 +361,39 @@ async function playSpan(sp,my){await buf();if(my!==tok)return false;if(AC.state=
   const node=srcNode,done=new Promise(r=>{node.onended=r;setTimeout(r,len*1000+600)});   // next step only after the sound has really ended
   T0=t;RATE=rate;SP={start:s,end:sp.end};track();await done;untrack();return my===tok}
 async function hold(sec,my){const end=performance.now()+sec*1000;while(performance.now()<end){if(my!==tok)return false;await sleep(30)}return my===tok}
+/* ---------- sound effects (Web Audio, no files; same idea as Prayog's SFX bank), stars and streak ---------- */
+const SFX=(()=>{let on=lsGet('shlokaSfx','1')!=='0',master=null,last={};
+  const ready=()=>{if(!on)return null;try{if(!master){master=AC.createGain();master.gain.value=0.22;master.connect(AC.destination)}if(AC.state==='suspended')AC.resume();return AC}catch(e){return null}};
+  function tone(f,d,type,v,glide,delay,att){const a=ready();if(!a)return;const t0=a.currentTime+(delay||0),o=a.createOscillator(),g=a.createGain();
+    o.type=type||'sine';o.frequency.setValueAtTime(f,t0);if(glide)o.frequency.exponentialRampToValueAtTime(Math.max(20,glide),t0+d);
+    g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(v||0.5,t0+(att||0.012));g.gain.exponentialRampToValueAtTime(0.0001,t0+d);
+    o.connect(g);g.connect(master);o.start(t0);o.stop(t0+d+0.02)}
+  function noise(d,f0,f1,v){const a=ready();if(!a)return;const t0=a.currentTime,n=Math.floor(a.sampleRate*d),b=a.createBuffer(1,n,a.sampleRate),x=b.getChannelData(0);
+    for(let i=0;i<n;i++)x[i]=Math.random()*2-1;const src=a.createBufferSource(),f=a.createBiquadFilter(),g=a.createGain();src.buffer=b;f.type='bandpass';f.Q.value=0.8;
+    f.frequency.setValueAtTime(f0,t0);f.frequency.exponentialRampToValueAtTime(Math.max(40,f1),t0+d);g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(v,t0+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+d);src.connect(f);f.connect(g);g.connect(master);src.start(t0);src.stop(t0+d+0.02)}
+  const BANK={
+    click:()=>{tone(1400,0.03,'square',0.12);tone(700,0.04,'triangle',0.2,null,0.01)},
+    pop:()=>tone(500,0.09,'sine',0.45,1100),
+    whoosh:()=>noise(0.4,300,2400,0.35),
+    chime:()=>{tone(660,0.35,'sine',0.35);tone(990,0.45,'sine',0.22,null,0.08)},
+    good:()=>{tone(660,0.18,'triangle',0.4);tone(880,0.2,'triangle',0.4,null,0.12);tone(1320,0.5,'sine',0.3,null,0.26)},   // 75+: three rising bell notes
+    soft:()=>tone(392,0.35,'sine',0.25,330),                                                                              // low score: a gentle note, never a buzzer
+    star:n=>{for(let i=0;i<(n||1);i++)tone(880*Math.pow(1.25,i),0.3,'sine',0.3,null,i*0.13)},
+    conch:()=>{tone(196,1.3,'triangle',0.45,233,0,0.35);tone(392,1.1,'sine',0.15,466,0.05,0.4)},                         // verse learned
+    drum:()=>{tone(120,0.18,'sine',0.6,70);noise(0.06,500,250,0.25)}};
+  const play=(n,a)=>{if(!on)return;const now=Date.now(),gap=250;if(last[n]&&now-last[n]<gap)return;last[n]=now;try{BANK[n](a)}catch(e){}};
+  const buzz=p=>{try{if(on&&navigator.vibrate)navigator.vibrate(p)}catch(e){}};
+  return{play,buzz,isOn:()=>on,setOn:v=>{on=!!v;lsSet('shlokaSfx',on?'1':'0')}}})();
+const starsFor=sc=>sc>=90?3:sc>=75?2:sc>=50?1:0;
+const BEST=(()=>{try{return JSON.parse(lsGet('shlokaBest','{}'))}catch(e){return{}}})();
+const bestOf=id=>Math.max(BEST[id]||0,(typeof ST!=='undefined'&&ST.progress&&ST.progress[id]&&ST.progress[id].best)||0);
+const starText=id=>{const n=starsFor(bestOf(id));return n?'✦'.repeat(n)+'✧'.repeat(3-n):''};
+const dayKey=d=>{const t=new Date(d);return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0')};
+function touchDay(){let a=[];try{a=JSON.parse(lsGet('shlokaDays','[]'))}catch(e){}const k=dayKey(Date.now());if(!a.includes(k)){a.push(k);lsSet('shlokaDays',JSON.stringify(a.slice(-400)))}}
+function streak(){let a=[];try{a=JSON.parse(lsGet('shlokaDays','[]'))}catch(e){}const S=new Set(a);let d=Date.now(),n=0;
+  if(!S.has(dayKey(d)))d-=864e5;                 // today not done yet: the streak still stands until tomorrow ends
+  while(S.has(dayKey(d))){n++;d-=864e5}return n}
 function cue(kind){if(!$('#cue').checked)return;if(AC.state==='suspended')AC.resume();const t0=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
   o.type='sine';o.frequency.value=kind==='you'?660:440;g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(0.09,t0+0.015);g.gain.exponentialRampToValueAtTime(0.0001,t0+0.16);
   o.connect(g).connect(AC.destination);o.start(t0);o.stop(t0+0.18)}
@@ -351,7 +406,7 @@ function stageSet(txt,sub,turn){$('#stage').className='stage'+(turn?' turn':'');
 async function countdown(ms,my,u){const bar=$('#gapbar'),fill=$('#gapfill');bar.classList.add('on');[].concat(u.el).forEach(e=>e.classList.add('turn'));const t0=performance.now();
   for(;;){const el=performance.now()-t0;if(my!==tok)break;if(el>=ms)break;fill.style.width=(100*el/ms).toFixed(1)+'%';await sleep(40)}
   fill.style.width='0';bar.classList.remove('on');[].concat(u.el).forEach(e=>e.classList.remove('turn'));return my===tok}
-async function session(from){stop();const my=tok;setPlaying(true);SELI=from??SELI;
+async function session(from){stop();const my=tok;setPlaying(true);touchDay();SFX.play('pop');SELI=from??SELI;
   const reps=+$('#loop').value,gapF=+$('#gap').value,auto=$('#auto').value,bt=+$('#between').value,cumul=$('#cumul').checked;
   try{for(;;){
     while(SELI<UN.length){const u=UN[SELI],dur=u.span.end-u.span.start;paintSel();reveal(u.el);
@@ -371,7 +426,7 @@ async function session(from){stop();const my=tok;setPlaying(true);SELI=from??SEL
           if(!await hold(0.5,my))return}}
       if(auto==='none')return endRun(my);
       if(SELI<UN.length-1){if(!await hold(bt,my))return;SELI++}else break}
-    if(auto==='verse'&&IDX<LIST.length-1){stageSet('Next verse','',false);if(!await hold(bt*1.5,my))return;load(IDX+1);tokKeep(my)}
+    if(auto==='verse'&&IDX<LIST.length-1){stageSet('Next verse','',false);if(!await hold(bt*1.5,my))return;if(!await load(IDX+1))return;tokKeep(my)}
     else return endRun(my)}
   }finally{if(my===tok)endRun(my)}}
 function tokKeep(my){/* load() redraws but must not cancel the running session */}
@@ -389,6 +444,8 @@ const applyFs=()=>document.documentElement.style.setProperty('--fs',$('#fs').val
 $('#mic').onclick=()=>$('#fbOn').click();
 $('#helpBtn').onclick=()=>{closeSheets();openSheet('#helpSheet')};
 if(lsGet('shlokaHelpSeen','')!=='1'){lsSet('shlokaHelpSeen','1');setTimeout(()=>openSheet('#helpSheet'),600)}   // first visit only
+const paintSfx=()=>{$('#sfxOn').setAttribute('aria-pressed',SFX.isOn());$('#sfxOn').textContent=SFX.isOn()?'On':'Off'};
+$('#sfxOn').onclick=()=>{SFX.setOn(!SFX.isOn());paintSfx();SFX.play('click')};paintSfx();
 /* ---------- marks (saved on this device) ---------- */
 const MK=(()=>{try{return JSON.parse(localStorage.getItem('shlokaMarks')||'{}')}catch(e){return{}}})();
 let saveMk=()=>lsSet('shlokaMarks',JSON.stringify(MK));
@@ -397,11 +454,13 @@ function paintMarks(){const m=MK[V.id]||{};if(typeof clearFb==='function')clearF
   $('#done').classList.toggle('on',!!m.done);$('#done').setAttribute('aria-pressed',!!m.done);
   const inCh=LIST.filter(v=>v.chapter===V.chapter),learned=inCh.filter(v=>(MK[v.id]||{}).done).length;
   $('#progBar').style.width=(100*learned/Math.max(1,inCh.length))+'%';$('#markNote').textContent=`Chapter ${V.chapter}: ${learned} of ${inCh.length} learned`;
+  $('#vstars').textContent=starText(V.id);
+  {const n=streak();if(n)$('#markNote').innerHTML+=` · <span class="streak">${n}-day streak</span>`}
   $('#prev').disabled=IDX<=0;$('#next').disabled=IDX>=LIST.length-1;
-  $('#vPrev').disabled=IDX<=0;$('#vNext').disabled=IDX>=LIST.length-1;
+  $('#dockNext').disabled=IDX>=LIST.length-1;$('#vPrev').disabled=IDX<=0;$('#vNext').disabled=IDX>=LIST.length-1;
   $('#vPrev span').textContent=IDX>0?'BG '+LIST[IDX-1].id:'';$('#vNext span').textContent=IDX<LIST.length-1?'Next verse · BG '+LIST[IDX+1].id:'Last verse';if(typeof paintBest==='function')paintBest()}
-$('#star').onclick=()=>{const m=MK[V.id]=MK[V.id]||{};m.star=!m.star;saveMk();paintMarks()};
-$('#done').onclick=()=>{const m=MK[V.id]=MK[V.id]||{};m.done=!m.done;saveMk();paintMarks()};
+$('#star').onclick=()=>{const m=MK[V.id]=MK[V.id]||{};m.star=!m.star;saveMk();paintMarks();if(m.star)SFX.play('pop')};
+$('#done').onclick=()=>{const m=MK[V.id]=MK[V.id]||{};m.done=!m.done;saveMk();paintMarks();if(m.done){SFX.play('conch');SFX.buzz([30,50,30])}};
 $('#onlyMarked').onchange=()=>{stop();loadSource($('#src').value)};
 
 /* ---------- display toggles ---------- */
