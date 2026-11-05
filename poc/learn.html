@@ -74,6 +74,13 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
 .ic[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:#fff}
 .vnav{display:flex;gap:10px;margin-top:14px}.vnav button{flex:1;border:1px solid var(--line);background:var(--cream);border-radius:14px;padding:12px 8px;font-weight:600}
 .vnav button:last-child{background:var(--teal);border-color:var(--teal);color:#fff}.vnav button:disabled{opacity:.35;cursor:default}
+.help ol{margin:0;padding:0;list-style:none;display:grid;gap:10px;counter-reset:h}
+.help li{counter-increment:h;display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;line-height:1.4}
+.help li::before{content:counter(h);width:28px;height:28px;border-radius:50%;background:var(--gold);color:#183b45;font-weight:700;display:grid;place-items:center}
+.help b{display:block}.help span{color:var(--muted);font-size:.92rem}
+.hbtn{width:100%;border:0;border-radius:14px;background:var(--teal);color:#fff;padding:12px;font-weight:600}
+.iw .s{font:italic 400 .82rem/1.25 "Noto Serif",Georgia,serif;color:var(--blue);margin-top:2px}
+.full{font:500 1.15rem/1.8 "Noto Serif Devanagari",Georgia,serif;text-align:center;white-space:pre-line}
 </style></head><body>
 <header class="top"><div class="wrap">
   <div class="bar1">
@@ -91,6 +98,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
     <span><button class="chip" id="star" aria-pressed="false">☆ Mark</button> <button class="chip" id="done" aria-pressed="false">✓ Learned</button></span></div>
   <div class="block" id="block"></div>
   <p class="note hint" id="tierNote"></p>
+  <details class="tr" id="fullv"><summary>Full verse, as chanted (sandhi joined)</summary><div class="full" id="fullTxt"></div></details>
   <section class="card"><h4>Translation</h4><div id="tr"></div></section>
   <details class="tr" id="purp"><summary>Purport</summary><div id="purpTxt" class="purp"></div></details>
   <div class="prog"><i id="progBar"></i></div><div class="note" id="markNote" style="margin-top:4px;text-align:center"></div>
@@ -140,9 +148,25 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
     <button class="pill" id="tDev" aria-pressed="true">देवनागरी</button>
     <button class="pill" id="tIast" aria-pressed="false">IAST</button>
     <button class="pill" id="mean" aria-pressed="true">Meanings</button>
+    <button class="pill" id="sandhi" aria-pressed="false">Sandhi split</button>
     <button class="pill" id="recall" aria-pressed="false">Recall mode</button>
   </div>
+  <button class="pill" id="helpBtn">How to use this page</button>
   <a href="index.html" class="note">Study &amp; tagging tools →</a>
+</div></div></div>
+
+<div class="sheet help" id="helpSheet" role="dialog" aria-label="How to use"><div class="bk" data-close></div><div class="pn"><div class="in">
+  <h3>How to learn a verse</h3>
+  <ol>
+    <li><div><b>Pick a verse</b><span>Tap “BG 1.1 ▾” at the top to choose a chapter and verse. Use ‹ › or the big Next verse button to move on.</span></div></li>
+    <li><div><b>Choose the size of the part</b><span>Verse, Halves, Pādas or Words. Tap any word to hear that part. Meanings are shown under each word.</span></div></li>
+    <li><div><b>Press ▶ to practise</b><span>You hear a part, then it is <em>Your turn</em> to chant it back (the blue bar is your time). It repeats, then moves to the next part.</span></div></li>
+    <li><div><b>Tune it in ⚙ Settings</b><span>Gap length, repeats, speed (pitch stays natural), “Hold the end” for long vowels, Build-up (replay everything so far and chant it all), text size.</span></div></li>
+    <li><div><b>Get feedback with 🎤</b><span>Switch the mic on, use headphones, and chant in your turn. You get a score for sound and pace, and a dot under each word: green is good, orange needs another try.</span></div></li>
+    <li><div><b>Mark your progress</b><span>★ Mark verses to come back to, ✓ Learned when you know one. Under Settings → Student, add your name to keep progress and scores on any device.</span></div></li>
+    <li><div><b>Read the meaning</b><span>Scroll down for the translation and Prabhupāda’s purport.</span></div></li>
+  </ol>
+  <button class="hbtn" data-close>Start</button>
 </div></div></div>
 
 <script>
@@ -209,12 +233,18 @@ $('#gear').onclick=()=>openSheet('#setSheet');
 /* ---------- the verse: drawn once, the tier only decides what a tap selects ---------- */
 const words=l=>l.chunks.flatMap(c=>c.words).filter(w=>w.word_audio);
 const spanOf=(ws,fb)=>ws.length?{start:ws[0].word_audio.start,end:ws[ws.length-1].word_audio.end}:fb;
+/* Sandhi viccheda: the word shown is the chanted form (sandhi applied at its edge); the book's own word-for-word entry
+   gives the form before sandhi ('pāṇḍavāś' <- 'pāṇḍavāḥ', 'caiva' <- 'ca + eva'). Shown only when they differ. */
+const nz=x=>x.normalize('NFC').toLowerCase().replace(/ṁ/g,'m').replace(/[-+\s’']/g,'');
+function splitOf(w){const sy=(w.synonym||'').trim();if(!sy)return'';
+  if(!sy.includes('+')&&sy.split(/\s+/).length>1)return'';        // one book entry shared by several words
+  return nz(sy)===nz(w.token)?'':'← '+sy.replace(/\s*\+\s*/g,' + ')}
 function draw(){if(!V)return;const keep=$('#scroll').scrollTop;
   [...$('#tiers').children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===tier));
   $('#ref').textContent='Bhagavad-gītā '+V.id;$('#chname').textContent='Chapter '+V.chapter+' · '+(CH[+V.chapter]||'');
-  $('#tocBtn').textContent='BG '+V.id+'  ▾';$('#tr').textContent=V.translation;paintPurport();$('#tierNote').textContent=NOTES[tier];
+  $('#tocBtn').textContent='BG '+V.id+'  ▾';$('#tr').textContent=V.translation;paintPurport();$('#fullTxt').textContent=(V.sanskrit||'').split('\n').filter(l=>!/वाच\s*$/.test(l.trim())).join('\n');$('#tierNote').textContent=NOTES[tier];
   const L=V.lines,box=$('#block');box.innerHTML='';ALLW=[];
-  const sd=on('#tDev'),si=on('#tIast'),sm=on('#mean');
+  const sd=on('#tDev'),si=on('#tIast'),sm=on('#mean'),ssh=on('#sandhi');
   const mk={verse:[{el:box,span:V.verse_audio||spanOf(L.flatMap(words))}],hemi:[],pada:[],word:[]};
   for(let h=0;h*2<L.length;h++){const half=document.createElement('div');half.className='half';
     const hl=L.slice(h*2,h*2+2),hw=hl.flatMap(words);if(!hw.length)continue;
@@ -223,8 +253,8 @@ function draw(){if(!V)return;const keep=$('#scroll').scrollTop;
       row.innerHTML='<span class="num"></span><div class="ws"></div>';row.firstChild.textContent=li+1;
       const pi=mk.pada.length;mk.pada.push({el:row,span:spanOf(lw)});const ws=row.lastChild,hi=mk.hemi.length-1;
       lw.forEach(w=>{const e=document.createElement('div');e.className='iw'+(w.suspect?' sus':'');
-        e.innerHTML='<span class="d hide-able"></span><span class="w hide-able"></span><span class="m"></span>';
-        const [dv,wd,m]=e.children;dv.textContent=toDeva(w.token);wd.textContent=w.token;m.textContent=w.meaning||'';
+        e.innerHTML='<span class="d hide-able"></span><span class="w hide-able"></span><span class="m"></span><span class="s"></span>';
+        const [dv,wd,m,sp]=e.children;sp.textContent=ssh?splitOf(w):'';sp.hidden=!sp.textContent;dv.textContent=toDeva(w.token);wd.textContent=w.token;m.textContent=w.meaning||'';
         dv.hidden=!sd;wd.hidden=!si&&sd;m.hidden=!sm;
         const wi=mk.word.length;mk.word.push({el:e,span:w.word_audio});
         e.onclick=ev=>{const t=ev.target;
@@ -347,6 +377,8 @@ $('#sum').onclick=()=>openSheet('#setSheet');
 
 const applyFs=()=>document.documentElement.style.setProperty('--fs',$('#fs').value);$('#fs').addEventListener('change',applyFs);applyFs();
 $('#mic').onclick=()=>$('#fbOn').click();
+$('#helpBtn').onclick=()=>{closeSheets();openSheet('#helpSheet')};
+if(lsGet('shlokaHelpSeen','')!=='1'){lsSet('shlokaHelpSeen','1');setTimeout(()=>openSheet('#helpSheet'),600)}   // first visit only
 /* ---------- marks (saved on this device) ---------- */
 const MK=(()=>{try{return JSON.parse(localStorage.getItem('shlokaMarks')||'{}')}catch(e){return{}}})();
 let saveMk=()=>lsSet('shlokaMarks',JSON.stringify(MK));
@@ -363,7 +395,7 @@ $('#done').onclick=()=>{const m=MK[V.id]=MK[V.id]||{};m.done=!m.done;saveMk();pa
 $('#onlyMarked').onchange=()=>{stop();loadSource($('#src').value)};
 
 /* ---------- display toggles ---------- */
-['#tDev','#tIast','#mean'].forEach(id=>$(id).onclick=()=>{$(id).setAttribute('aria-pressed',!on(id));if(!on('#tDev')&&!on('#tIast'))$('#tDev').setAttribute('aria-pressed',true);draw()});
+['#tDev','#tIast','#mean','#sandhi'].forEach(id=>$(id).onclick=()=>{$(id).setAttribute('aria-pressed',!on(id));if(!on('#tDev')&&!on('#tIast'))$('#tDev').setAttribute('aria-pressed',true);draw()});
 $('#recall').onclick=()=>{const v=!on('#recall');$('#recall').setAttribute('aria-pressed',v);document.body.classList.toggle('recall',v)};
 document.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)||document.querySelector('.sheet.open'))return;
   if(e.key==='ArrowRight')$('#nu').click();else if(e.key==='ArrowLeft')$('#pu').click();else if(e.key===' '){e.preventDefault();$('#all').click()}});
