@@ -54,6 +54,13 @@ def q(sql, params=()):
         try:
             with urllib.request.urlopen(req, timeout=15) as r:
                 j = json.load(r)
+        except urllib.error.HTTPError as e:
+            try:
+                body = json.load(e)
+                why = "; ".join("%s %s" % (x.get("code"), x.get("message")) for x in body.get("errors", []))[:300]
+            except Exception:
+                why = ""
+            raise DbError("HTTP %s from Cloudflare%s" % (e.code, (": " + why) if why else ""))
         except (urllib.error.URLError, OSError, ValueError) as e:
             raise DbError(str(e))
         if not j.get("success"):
@@ -113,7 +120,21 @@ def seed_verses():
     except Exception as e:                      # the site keeps working from the static files if this fails
         VSTATE["error"] = str(e)[:200]
         sys.stderr.write("verse seeding failed: %s\n" % e)
+        return False
+    return True
 
+
+def seed_loop():
+    while not seed_verses():
+        time.sleep(60)
+        try:
+            ensure_db()
+        except DbError:
+            pass
+
+
+
+DBSTATE = {"ok": False, "error": "", "tried": 0.0}
 
 
 def init():
@@ -121,6 +142,22 @@ def init():
         os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
     for st in SCHEMA:
         q(st)
+    DBSTATE.update(ok=True, error="")
+
+
+def ensure_db():
+    """Create the tables once the database answers. Retries at most every 20 s, so a wrong key does not take the site down."""
+    if DBSTATE["ok"]:
+        return
+    if time.time() - DBSTATE["tried"] < 20:
+        raise DbError(DBSTATE["error"] or "database not ready")
+    DBSTATE["tried"] = time.time()
+    try:
+        init()
+    except DbError as e:
+        DBSTATE["error"] = str(e)
+        sys.stderr.write("database unavailable: %s (check CF_ACCOUNT_ID, CF_D1_DATABASE_ID, CF_API_TOKEN: token needs Account > D1 > Edit)\n" % e)
+        raise
 
 
 def h(code):
@@ -203,7 +240,7 @@ class H(SimpleHTTPRequestHandler):
     def do_GET(self):
         u = urlparse(self.path)
         if u.path == "/healthz":
-            return self.send_json({"ok": True, "storage": "d1" if USE_D1 else "sqlite", "cf_vars_present": {"CF_ACCOUNT_ID": bool(CF_ACCOUNT), "CF_D1_DATABASE_ID": bool(CF_DB), "CF_API_TOKEN": bool(CF_TOKEN)}})
+            return self.send_json({"ok": True, "storage": "d1" if USE_D1 else "sqlite", "db": {"ok": DBSTATE["ok"], "error": DBSTATE["error"]}, "cf_vars_present": {"CF_ACCOUNT_ID": bool(CF_ACCOUNT), "CF_D1_DATABASE_ID": bool(CF_DB), "CF_API_TOKEN": bool(CF_TOKEN)}})
         if u.path.startswith("/api/"):
             return self.api("GET", u)
         if u.path == "/":
@@ -235,6 +272,8 @@ class H(SimpleHTTPRequestHandler):
                 q("INSERT INTO students(name,code_hash,created,seen) VALUES(?,?,?,?)", (name, h(raw), time.time(), time.time()))
                 return self.send_json({"name": name, "code": "-".join(raw[i:i + 4] for i in (0, 4, 8))}, 201)
 
+            if p.startswith("/api/") and p not in ("/api/verses",) and not p.startswith("/api/verses/"):
+                ensure_db()
             if method == "GET" and p == "/api/verses":
                 if not VSTATE["ready"]:
                     return self.send_json({"ready": False, "done": VSTATE["done"], "total": VSTATE["total"], "error": VSTATE["error"]})
@@ -324,10 +363,10 @@ class H(SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     try:
-        init()
-    except DbError as e:
-        sys.exit(f"cannot reach the database: {e}\nCheck CF_ACCOUNT_ID, CF_D1_DATABASE_ID and CF_API_TOKEN (token needs 'D1 Edit').")
-    threading.Thread(target=seed_verses, daemon=True).start()
+        ensure_db()
+    except DbError:
+        pass                                    # keep serving; every API call retries (see /healthz "db")
+    threading.Thread(target=seed_loop, daemon=True).start()
     port = int(os.environ.get("PORT", "8000"))
     print(f"serving {ROOT} + API on :{port}, db {'Cloudflare D1' if USE_D1 else DB_PATH}, teacher view {'on' if TEACHER_KEY else 'off'}", flush=True)
     ThreadingHTTPServer(("0.0.0.0", port), H).serve_forever()
