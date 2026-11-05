@@ -1,0 +1,71 @@
+# Play Store kit
+
+Everything the Play Console asks for, ready to paste. App name below is the current one (**Shloka Learn**); change it in
+`capacitor.config.json` (`appName`), `android/app/src/main/res/values/strings.xml` and here if you pick another.
+
+## Files
+| Asset | File | Spec |
+|---|---|---|
+| App icon (store) | `branding/out/store_icon_512.png` | 512 × 512 PNG |
+| Feature graphic | `branding/out/feature_1024x500.png` | 1024 × 500 PNG (made once the name is final) |
+| Phone screenshots | `branding/screenshots/*.png` | 1080 × 2160, 5 images |
+| Launcher icons, splash | already in `android/app/src/main/res/` | adaptive (foreground + background), round, legacy |
+| Icon source | `branding/conch_full.svg`, `conch_fg.svg`, `conch_bg.svg` | the Pāñcajanya conch, drawn for this app |
+| Privacy policy URL | `https://shloka-learn.onrender.com/privacy.html` | required (microphone, accounts) |
+
+## Build the release
+1. Once: `./make_keystore.sh` creates your upload key (`~/shloka-upload.jks`) and `android/keystore.properties`.
+   **Back up both the .jks file and the password.** Losing them means you can never update the app.
+2. Each release: raise `versionCode` (+1) and `versionName` in `android/app/build.gradle`, then
+   `npm run aab` gives `android/app/build/outputs/bundle/release/app-release.aab`, which you upload to the Play Console.
+3. In the Console, turn on **Play App Signing** (Google keeps the app signing key; yours is only the upload key).
+
+## Listing
+**Short description** (80 max):
+Learn Bhagavad-gītā verses by heart: chanting, word meanings and practice
+
+**Full description:**
+Learn the Bhagavad-gītā the traditional way: listen, repeat, and understand every word.
+
+• All 700 verses of the Gītā (657 verse entries), chanted clearly in the classical meter
+• Practise by verse, half, quarter (pāda) or single word, with a pause for you to chant back, repeats and build-up
+• Every word shows its meaning underneath; turn on "say its meaning" to hear each word explained before you practise
+• Sandhi split: see how the chanted words break into their dictionary forms
+• Translation and purport for every verse, with a "listen" button
+• Mic feedback: chant in your turn and see which words came through clearly (green, orange, red) and your pace
+• Classes on the verse: watch what a teacher says about the verse and about each word
+• Speed control without changing the pitch, "hold the end" for long vowels, text size, dark mode
+• Mark verses, track what you have learned, keep a streak and earn stars for clear chanting
+• Optional account with a username and password to keep your progress on any device; no e-mail needed
+• No ads. No tracking.
+
+**Category:** Education (or Books & Reference). **Tags:** Bhagavad Gita, Sanskrit, shloka, chanting, memorisation.
+
+## Data safety (answers)
+| Question | Answer |
+|---|---|
+| Collects or shares user data? | Collects: yes. Shares with third parties: **no** (hosting and database providers are service providers, not sharing). |
+| Encrypted in transit | Yes (HTTPS) |
+| Users can request deletion | Yes: in the app (Settings → Student → Delete my account) and by e-mail |
+| Personal info → Name | Collected, optional, app functionality / account management |
+| Personal info → User IDs (username) | Collected, optional, account management |
+| App activity → Other actions (marks, practice scores) | Collected, optional, app functionality |
+| Audio → Voice or sound recordings | Collected, **processed ephemerally** (not stored), optional (only with Mic feedback on), app functionality |
+| Location, contacts, photos, financial, health, device IDs | Not collected |
+
+**Permissions to explain:** `RECORD_AUDIO`, used only for Mic feedback during "Your turn" to check the chanted words; the recording is not kept.
+**Account deletion URL** (Console asks for it): `https://shloka-learn.onrender.com/privacy.html#deleting-your-data` (make sure that heading has that id).
+
+## Content rating and audience
+- Questionnaire: reference/education app, no violence, no user-to-user chat, no gambling, religious text → rated *Everyone* / *3+*.
+- **Target age**: choosing "13 and over" keeps it out of Google's Families programme. If you include children under 13,
+  the Families policy applies (the YouTube class videos and the account features need extra review). Decide before submitting.
+- Ads: none. In-app purchases: none.
+
+## Before you submit (still to do)
+- [ ] Final app name (and then the feature graphic)
+- [ ] Contact e-mail in `poc/privacy.html` (replace `CONTACT_EMAIL`)
+- [ ] Test the APK on a real phone: mic prompt, spoken meanings, YouTube classes, sign-in
+- [ ] The word scorer reachable (fixed tunnel address) or the app says "word check is offline" (fine, but say so in the listing)
+- [ ] Permission from the speaker/channel for the class videos shown in the app
+- [ ] Play Console developer account (one-time fee) and identity verification

@@ -456,6 +456,13 @@ class H(SimpleHTTPRequestHandler):
                     return self.send_json({"error": "That username is taken."}, 409)
                 q("UPDATE students SET username=?, pw=? WHERE id=?", (user, hash_password(pw), s["id"]))
                 return self.send_json({"ok": True, "username": user})
+            if method == "POST" and p == "/api/auth/delete":             # the learner deletes their account and everything in it
+                s = self.student()
+                if not s:
+                    return self.send_json({"error": "sign in"}, 401)
+                for sql in ("DELETE FROM attempts WHERE student_id=?", "DELETE FROM sessions WHERE student_id=?", "DELETE FROM students WHERE id=?"):
+                    q(sql, (s["id"],))
+                return self.send_json({"ok": True})
             if method == "POST" and p == "/api/auth/logout":
                 code = (self.headers.get("X-Student-Code") or "").strip().upper().replace("-", "")
                 if code:

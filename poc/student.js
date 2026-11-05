@@ -32,7 +32,11 @@ function paintStudent(){const b=$('#stBox');b.innerHTML='';
       k.onclick=async()=>{k.disabled=true;m.textContent='';try{const r=await api('POST','api/auth/claim',{username:u.value,password:pw.value});ST.username=r.username;await pull()}catch(e){m.textContent=e.message;k.disabled=false}}}
     const t=Object.values(ST.progress),att=t.reduce((a,x)=>a+x.n,0);
     add('p','note').textContent=`${att} practice attempt${att===1?'':'s'} on ${t.length} verse${t.length===1?'':'s'}.`;
-    const o=add('button','pill');o.textContent='Sign out';o.onclick=async()=>{try{await api('POST','api/auth/logout',{})}catch(e){}lsSet('shlokaCode','');lsSet('shlokaName','');ST.name='';ST.username='';ST.progress={};ACCMODE='in';paintStudent();if(V)paintMarks()}}
+    const o=add('button','pill');o.textContent='Sign out';o.onclick=async()=>{try{await api('POST','api/auth/logout',{})}catch(e){}lsSet('shlokaCode','');lsSet('shlokaName','');ST.name='';ST.username='';ST.progress={};ACCMODE='in';paintStudent();if(V)paintMarks()}
+    const del=add('button','pill');del.textContent='Delete my account';del.style.color='var(--warn)';
+    del.onclick=async()=>{if(!confirm('Delete your account, marks and scores from the server? This cannot be undone.'))return;
+      try{await api('POST','api/auth/delete',{});lsSet('shlokaCode','');lsSet('shlokaName','');ST.name='';ST.username='';ST.progress={};ACCMODE='in';paintStudent();if(V)paintMarks()}
+      catch(e){alert('Could not delete: '+e.message)}}}
   else{const tabs=add('div','row');for(const [k,t] of [['in','Sign in'],['up','Create account']]){const x=add('button','pill',tabs);x.textContent=t;x.setAttribute('aria-pressed',ACCMODE===k);x.onclick=()=>{ACCMODE=k;paintStudent()}}
     const msg=document.createElement('p');msg.className='note';
     if(ACCMODE==='in'){const u=field('Username','text','username'),pw=field('Password','password','current-password');add('button','pill').textContent='Sign in';b.lastChild.onclick=function(){call('api/auth/login',{username:u.value,password:pw.value},msg,this)};

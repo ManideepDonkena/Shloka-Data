@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Pāñcajanya: a right-whorl śaṅkha (Turbinella pyrum) with a gold band, its sound rising as three waves of chant.
+       Original drawing for this app (not traced from any file). -->
+  <defs>
+    <radialGradient id="bg" cx="42%" cy="35%" r="80%"><stop offset="0" stop-color="#f28a2e"/><stop offset=".55" stop-color="#d4561f"/><stop offset="1" stop-color="#8e2414"/></radialGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#d9c7a8"/><stop offset=".28" stop-color="#fbf4e6"/><stop offset=".62" stop-color="#fffdf8"/><stop offset="1" stop-color="#e3d2b4"/></linearGradient>
+    <linearGradient id="spire" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#d8c4a2"/><stop offset=".45" stop-color="#fbf3e2"/><stop offset="1" stop-color="#dcc8a6"/></linearGradient>
+    <linearGradient id="mouth" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb08a"/><stop offset=".6" stop-color="#f07d5b"/><stop offset="1" stop-color="#c95238"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b9831f"/><stop offset=".5" stop-color="#ffd76a"/><stop offset="1" stop-color="#b9831f"/></linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#4a0f06" flood-opacity=".45"/></filter>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- subtle mandala ring -->
+  <circle cx="256" cy="262" r="196" fill="none" stroke="#ffd9a0" stroke-opacity=".16" stroke-width="2"/>
+  <circle cx="256" cy="262" r="176" fill="none" stroke="#ffd9a0" stroke-opacity=".10" stroke-width="10" stroke-dasharray="2 14"/>
+
+  <g transform="translate(256 262) scale(1.13) translate(-256 -262) rotate(-38 250 270)" filter="url(#sh)">
+    <!-- spire: stacked whorls -->
+    <path d="M250 64 L238 92 L262 92 Z" fill="url(#spire)"/>
+    <path d="M236 92 C 232 104, 228 112, 224 122 L 276 122 C 272 112, 268 104, 264 92 Z" fill="url(#spire)"/>
+    <path d="M222 122 C 216 136, 210 146, 204 158 L 296 158 C 290 146, 284 136, 278 122 Z" fill="url(#spire)"/>
+    <path d="M202 158 C 192 172, 184 182, 176 196 L 324 196 C 316 182, 308 172, 298 158 Z" fill="url(#spire)"/>
+    <g stroke="#bfa47c" stroke-width="3" fill="none" stroke-linecap="round">
+      <path d="M236 92 C 246 96, 256 96, 264 92"/><path d="M222 122 C 240 128, 262 128, 278 122"/><path d="M202 158 C 228 166, 274 166, 298 158"/>
+    </g>
+    <!-- body whorl tapering to the siphonal canal -->
+    <path d="M176 196 C 140 224, 130 272, 140 316 C 152 366, 192 410, 232 444 C 240 452, 252 456, 262 448
+             C 304 410, 346 364, 358 312 C 366 268, 356 224, 324 196 Z" fill="url(#body)"/>
+    <!-- spiral ridges -->
+    <g stroke="#cdb58f" stroke-width="4" fill="none" stroke-linecap="round" opacity=".85">
+      <path d="M166 236 C 210 254, 280 254, 336 234"/>
+      <path d="M156 280 C 210 300, 286 298, 344 276"/>
+      <path d="M162 326 C 208 344, 276 342, 334 322"/>
+      <path d="M182 372 C 214 386, 262 386, 306 370"/>
+    </g>
+    <!-- aperture (right whorl: opens to the right), pink inner lip -->
+    <path d="M300 214 C 360 240, 372 300, 344 352 C 320 396, 284 426, 262 448 C 276 408, 290 360, 292 314 C 294 270, 294 240, 300 214 Z" fill="url(#mouth)"/>
+    <path d="M300 214 C 352 238, 364 292, 340 344" fill="none" stroke="#fff3e8" stroke-width="5" stroke-linecap="round" opacity=".9"/>
+    <!-- columella folds -->
+    <g stroke="#a8432c" stroke-width="3" fill="none" stroke-linecap="round" opacity=".55"><path d="M292 296 c 8 4 14 4 20 0"/><path d="M290 326 c 8 4 14 4 20 0"/><path d="M286 356 c 8 4 12 4 18 0"/></g>
+    <!-- gold band with beads at the shoulder -->
+    <path d="M172 204 C 214 222, 288 222, 330 204 L 333 220 C 290 238, 212 238, 168 220 Z" fill="url(#gold)"/>
+    <g fill="#fff1b8"><circle cx="196" cy="221" r="3.4"/><circle cx="222" cy="226" r="3.4"/><circle cx="250" cy="228" r="3.4"/><circle cx="278" cy="226" r="3.4"/><circle cx="304" cy="221" r="3.4"/></g>
+    <!-- gold cap on the canal -->
+    <path d="M236 440 C 244 452, 256 454, 264 444 L 266 462 C 258 476, 242 476, 234 462 Z" fill="url(#gold)"/>
+    <!-- highlight -->
+    <path d="M190 250 C 184 290, 192 336, 214 374" stroke="#ffffff" stroke-width="8" fill="none" stroke-linecap="round" opacity=".55"/>
+  </g>
+  <!-- sound of the conch: three rising waves -->
+  <g fill="none" stroke="#ffe7b0" stroke-linecap="round" transform="translate(392 344) rotate(-38)">
+    <path d="M0 -22 q 22 22 0 44" stroke-width="11"/>
+    <path d="M26 -44 q 40 44 0 88" stroke-width="9" opacity=".75"/>
+    <path d="M52 -66 q 58 66 0 132" stroke-width="7" opacity=".5"/>
+  </g>
+</svg>
