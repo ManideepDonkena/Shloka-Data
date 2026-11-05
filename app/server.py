@@ -178,8 +178,10 @@ class H(SimpleHTTPRequestHandler):
                 return self.send_json({"name": name, "code": "-".join(raw[i:i + 4] for i in (0, 4, 8))}, 201)
 
             if p == "/api/teacher/students" and method == "GET":
-                if not TEACHER_KEY or not hmac.compare_digest(self.headers.get("X-Teacher-Key", ""), TEACHER_KEY):
-                    return self.send_json({"error": "forbidden"}, 403)
+                if not TEACHER_KEY:
+                    return self.send_json({"error": "teacher view is off: set TEACHER_KEY in the server's environment"}, 503)
+                if not hmac.compare_digest(self.headers.get("X-Teacher-Key", ""), TEACHER_KEY):
+                    return self.send_json({"error": "wrong teacher key"}, 403)
                 rows = q("""SELECT s.id,s.name,s.created,s.seen,s.state,
                     (SELECT COUNT(*) FROM attempts a WHERE a.student_id=s.id) n,
                     (SELECT ROUND(AVG(score)) FROM attempts a WHERE a.student_id=s.id) avg,
@@ -190,7 +192,7 @@ class H(SimpleHTTPRequestHandler):
                     m = json.loads(r["state"] or "{}").get("marks", {})
                     out.append({"name": r["name"], "joined": r["created"], "seen": r["seen"], "attempts": r["n"], "avg_score": r["avg"],
                                 "last_attempt": r["last"], "learned": sum(1 for v in m.values() if v.get("done")), "marked": sum(1 for v in m.values() if v.get("star"))})
-                return self.send_json({"students": out})
+                return self.send_json({"students": out, "storage": "d1" if USE_D1 else "sqlite"})
 
             if not p.startswith("/api/me") and p != "/api/attempts":
                 return self.send_json({"error": "not found"}, 404)
