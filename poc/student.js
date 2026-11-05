@@ -59,30 +59,51 @@ if(lsGet('shlokaFb','0')==='1'){$('#fbOn').setAttribute('aria-pressed','true');$
 /* ---------- compare + show ---------- */
 const clearFb=()=>{ALLW.forEach(({e})=>e.removeAttribute('data-fb'));$('#fb').hidden=true};
 function slice(a,b){const sr=BUF.sampleRate,x=BUF.getChannelData(0);return x.slice(Math.max(0,Math.round(a*sr)),Math.round(b*sr))}
-function analyse(u,clip){clearFb();const my=tok;
+/* How an attempt is checked:
+   1. In the browser: was there chanting at all? (voicing: periodic sound well above the room's own noise; silence, a fan
+      or the mic's auto-gain on a quiet room do not count). Pace = how long you chanted vs the reference.
+   2. On the scoring server (app/scorer.py, the MMS speech model): your recording is forced-aligned to the words of this
+      part and each word gets a clarity score -> green (clear), orange (check), red (not heard). The part's score comes
+      from those words. It judges the sounds of the words, not your pitch or melody.
+   If the scoring server is off, only step 1 is shown and no score is given (a guess would be misleading). */
+function pcm16b64(x){const n=x.length,b=new Uint8Array(n*2);for(let i=0;i<n;i++){const v=Math.max(-1,Math.min(1,x[i]))*32767|0;b[2*i]=v&255;b[2*i+1]=(v>>8)&255}
+  let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)}
+const paceScore=r=>{const d=Math.abs(Math.log(r));return Math.round(100*Math.max(0,Math.min(1,1-(d-Math.log(1.25))/(Math.log(2)-Math.log(1.25)))))};
+async function analyse(u,clip){clearFb();
   if(!clip){showFb(null,'I could not record that. Check the microphone.');return}
-  setTimeout(()=>{if(my!==tok&&!RUN)return;
-    const sr=BUF.sampleRate,s0=u.span.start-0.05,ws=ALLW.map((x,i)=>({x,i})).filter(({x})=>x.w.word_audio.start>=u.span.start-0.005&&x.w.word_audio.end<=u.span.end+0.005);
-    const ref={x:slice(s0,u.span.end+0.1),sr,words:ws.map(({x})=>({token:x.w.token,start:x.w.word_audio.start-s0,end:x.w.word_audio.end-s0}))};
-    const others=UN.filter((_,i)=>i!==SELI).sort((a,b)=>Math.abs(a.span.start-u.span.start)-Math.abs(b.span.start-u.span.start)).slice(0,3)
-      .map(o=>({x:slice(o.span.start-0.05,o.span.end+0.1),sr}));
-    let res;try{res=ChantFeedback.compare(ref,clip,others)}catch(e){res={ok:false,message:'Could not analyse that attempt.'}}
-    if(!res.ok){showFb(null,res.message);return}
-    res.words.forEach(w=>{const el=ws[w.idx]&&ws[w.idx].x.e;if(el)el.dataset.fb=w.note==='ok'?'good':'check'});
-    const prev=bestOf(V.id),sn=starsFor(res.score);touchDay();
-    showFb(res);
-    if(res.score>prev){BEST[V.id]=res.score;lsSet('shlokaBest',JSON.stringify(BEST));
-      if(prev>0||res.score>=50){const t=document.createElement('div');t.textContent='New best for this verse!';t.className='fbl';$('#fbTxt').append(t)}
-      if(starsFor(res.score)>starsFor(prev)){setTimeout(()=>SFX.play('star',sn),600)}}
-    SFX.play(res.score>=75?'good':res.score>=50?'chime':'soft');SFX.buzz(res.score>=75?[25,40,25]:20);
-    $('#vstars').textContent=starText(V.id);
-    if(lsGet('shlokaCode',''))api('POST','api/attempts',{verse:V.id,unit:tier,idx:SELI,score:res.score,sound:res.sound,pace:res.pace,ratio:res.ratio,
-        detail:{w:res.words.map(w=>[w.token,w.score,w.note==='ok'?0:1])}}).then(()=>pull()).catch(()=>{})},30)}
-function showFb(r,msg){const b=$('#fb');b.hidden=false;
-  if(!r){b.className='fb';$('#fbScore').textContent='—';$('#fbTxt').textContent=msg;return}
+  const sr=BUF.sampleRate,ws=ALLW.filter(x=>x.w.word_audio.start>=u.span.start-0.005&&x.w.word_audio.end<=u.span.end+0.005);
+  const refDur=u.span.end-u.span.start,vo=ChantFeedback.voicing(clip.x,clip.sr),rv=ChantFeedback.voicing(slice(u.span.start,u.span.end),sr);
+  if(vo.voiced<Math.max(0.3,0.25*refDur)){SFX.play('soft');showFb(null,'I did not hear chanting. Chant a little louder and closer to the phone (headphones help).');return}
+  const pace=(vo.end-vo.start)/Math.max(0.3,rv.end-rv.start),ps=paceScore(pace);
+  showFb(null,'Checking your words…');
+  const x16=ChantFeedback.resample(clip.x,clip.sr),a=Math.max(0,Math.round((vo.start-0.3)*16000)),z=Math.min(x16.length,Math.round((vo.end+0.4)*16000));
+  let m=null;try{m=await api('POST','api/score',{words:ws.map(x=>x.w.token),audio:pcm16b64(x16.subarray(a,z))})}catch(e){m=null}
+  touchDay();
+  if(!m||!m.ok){SFX.play('chime');showFb({heardOnly:true,pace,ps});return}
+  if(!m.heard){SFX.play('soft');showFb(null,'I could not make out the words of this part. Listen once more, then chant it clearly.');return}
+  m.words.forEach((w,i)=>{if(ws[i])ws[i].e.dataset.fb=w.verdict==='good'?'good':w.verdict==='check'?'check':'miss'});
+  const res={score:m.score,words:m.words,pace,ps,clear:m.words.filter(w=>w.verdict==='good').length};
+  const prev=bestOf(V.id),sn=starsFor(res.score);
+  showFb(res);
+  if(res.score>prev){BEST[V.id]=res.score;lsSet('shlokaBest',JSON.stringify(BEST));
+    if(prev>0||res.score>=50){const t=document.createElement('div');t.textContent='New best for this verse!';t.className='fbl';$('#fbTxt').append(t)}
+    if(starsFor(res.score)>starsFor(prev))setTimeout(()=>SFX.play('star',sn),600)}
+  SFX.play(res.score>=75?'good':res.score>=50?'chime':'soft');SFX.buzz(res.score>=75?[25,40,25]:20);
+  $('#vstars').textContent=starText(V.id);
+  if(lsGet('shlokaCode',''))api('POST','api/attempts',{verse:V.id,unit:tier,idx:SELI,score:res.score,sound:Math.round(100*res.clear/Math.max(1,m.words.length)),pace:ps,ratio:+pace.toFixed(2),
+      detail:{w:m.words.map(w=>[w.token,w.lp,w.verdict])}}).then(()=>pull()).catch(()=>{})}
+function showFb(r,msg){const b=$('#fb');b.hidden=false;const T=$('#fbTxt');T.innerHTML='';
+  const line=(t,cls)=>{const d=document.createElement('div');d.textContent=t;if(cls)d.className=cls;T.append(d)};
+  const paceTip=p=>p<0.8?`A bit fast (${Math.round(p*100)}% of the reference length): let long vowels ring.`:p>1.25?`A bit slow (${Math.round(p*100)}% of the reference length): keep it flowing.`:'Pace matches the reference.';
+  if(!r){b.className='fb';$('#fbScore').textContent='—';line(msg);return}
+  if(r.heardOnly){b.className='fb ok';$('#fbScore').textContent='✓';line('Heard you · Pace '+r.ps,'fbl');line(paceTip(r.pace));line('Word check is offline right now, so no score.');return}
   b.className='fb '+(r.score>=75?'good':r.score>=50?'ok':'low');$('#fbScore').textContent=r.score;
-  $('#fbTxt').innerHTML='';const l=document.createElement('div');l.textContent=`Sound ${r.sound} · Pace ${r.pace}`;l.className='fbl';$('#fbTxt').append(l);
-  r.tips.slice(0,2).forEach(t=>{const d=document.createElement('div');d.textContent=t;$('#fbTxt').append(d)})}
+  line(`${r.clear} of ${r.words.length} words clear · Pace ${r.ps}`,'fbl');
+  const miss=r.words.filter(w=>w.verdict==='missed').map(w=>w.token),chk=r.words.filter(w=>w.verdict==='check').map(w=>w.token);
+  if(miss.length)line('Not heard clearly: '+miss.slice(0,4).join(', '));
+  if(chk.length)line('Check: '+chk.slice(0,4).join(', '));
+  if(!miss.length&&!chk.length)line('Every word was clear.');
+  line(paceTip(r.pace))}
 $('#fb').onclick=()=>{if(FBHOLD){FBHOLD=false;return}clearFb()};   // while practice waits for it, a tap means 'continue'
 
 pull();

@@ -76,7 +76,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
 .fb{display:flex;gap:10px;align-items:center;text-align:left;margin:6px auto 2px;max-width:560px;padding:6px 12px;border-radius:14px;background:var(--cream);font-size:.84rem;line-height:1.35;cursor:pointer;border:1px solid var(--line)}
 .fb[hidden]{display:none}.fb b{flex:none;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font:700 1.05rem "DM Sans";color:#fff;background:var(--muted)}
 .fb.good b{background:var(--teal)}.fb.ok b{background:var(--gold);color:#183b45}.fb.low b{background:var(--warn)}.fbl{font-weight:600}
-.iw[data-fb]::after{content:'';width:8px;height:8px;border-radius:50%;margin-top:3px}.iw[data-fb=good]::after{background:var(--teal)}.iw[data-fb=check]::after{background:var(--warn)}
+.iw[data-fb]::after{content:'';width:8px;height:8px;border-radius:50%;margin-top:3px}.iw[data-fb=good]::after{background:var(--teal)}.iw[data-fb=check]::after{background:var(--warn)}.iw[data-fb=miss]::after{background:#d9534f}
 .sheet input:not([type=checkbox]){padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--cream);color:var(--ink);font:inherit;min-width:0}
 .ic[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:#fff}
 .vnav{display:flex;gap:10px;margin-top:14px}.vnav button{flex:1;border:1px solid var(--line);background:var(--cream);border-radius:14px;padding:12px 8px;font-weight:600}
@@ -174,7 +174,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
     <li><div><b>Choose the size of the part</b><span>Verse, Halves, Pādas or Words. Tap any word to hear that part. Meanings are shown under each word.</span></div></li>
     <li><div><b>Press ▶ to practise</b><span>You hear a part, then it is <em>Your turn</em> to chant it back (the blue bar is your time). It repeats, then moves to the next part.</span></div></li>
     <li><div><b>Tune it in ⚙ Settings</b><span>Gap length, repeats, speed (pitch stays natural), “Hold the end” for long vowels, Build-up (replay everything so far and chant it all), text size.</span></div></li>
-    <li><div><b>Get feedback with 🎤</b><span>Switch the mic on, use headphones, and chant in your turn. You get a score for sound and pace, and a dot under each word: green is good, orange needs another try.</span></div></li>
+    <li><div><b>Get feedback with 🎤</b><span>Switch the mic on, use headphones, and chant in your turn. Each word gets a dot: green = heard clearly, orange = check it, red = not heard. The score is how clearly the words came through (it checks the sounds of the words, not your melody). Silence gets no score.</span></div></li>
     <li><div><b>Mark your progress</b><span>★ Mark verses to come back to, ✓ Learned when you know one. Under Settings → Student, add your name to keep progress and scores on any device.</span></div></li>
     <li><div><b>Read the meaning</b><span>Scroll down for the translation and Prabhupāda’s purport.</span></div></li>
   </ol>
@@ -427,7 +427,7 @@ async function session(from){stop();const my=tok;setPlaying(true);touchDay();SFX
           const rec=on('#fbOn')?(await hold(0.2,my),Rec.start()):null;     // record after the cue tone so it is not picked up
           /* with the mic on, give a learner time to start and finish: at least 1.3x the part, plus 1.2 s */
           const ok=await countdown((dur*(rec?Math.max(gapF,1.3):gapF)*1000/(+$('#speed').value))+(rec?1200:0),my,u);
-          if(rec){const clip=await rec.stop();if(ok)analyse(u,clip)}
+          if(rec){const clip=await rec.stop();if(ok)await Promise.race([analyse(u,clip),sleep(6000)])}
           if(!ok)return;cue('me');
           if(rec){const w=+$('#fbwait').value;await hold(0.4,my);      // let the score appear, then pause so it can be read
             if(w>0){stageSet('Your score','look at the dots under the words',false);if(!await hold(w,my))return}

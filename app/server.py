@@ -27,6 +27,8 @@ TEACHER_KEY = os.environ.get("TEACHER_KEY", "")
 MAX_BODY = 70 * 1024
 ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"          # no 0/O/1/I/L
 STATIC_OK = {".html", ".js", ".css", ".json", ".mp3", ".png", ".ico", ".svg", ".txt"}
+SCORER_URL = os.environ.get("SCORER_URL", "").rstrip("/")   # app/scorer.py (MMS model) running on a GPU machine
+SCORER_KEY = os.environ.get("SCORER_KEY", "")
 CORS_EXTRA = tuple(x for x in os.environ.get("CORS_ORIGINS", "").split(",") if x)   # extra allowed origins (testing)
 LOCK = threading.Lock()
 HITS = {}                                              # ip -> [timestamps], for sign-up / bad-code throttling
@@ -281,7 +283,7 @@ class H(SimpleHTTPRequestHandler):
     def do_GET(self):
         u = urlparse(self.path)
         if u.path == "/healthz":
-            return self.send_json({"ok": True, "storage": "d1" if USE_D1 else "sqlite", "db": {"ok": DBSTATE["ok"], "error": DBSTATE["error"]}, "cf_vars_present": {"CF_ACCOUNT_ID": bool(CF_ACCOUNT), "CF_D1_DATABASE_ID": bool(CF_DB), "CF_API_TOKEN": bool(CF_TOKEN)}})
+            return self.send_json({"ok": True, "storage": "d1" if USE_D1 else "sqlite", "db": {"ok": DBSTATE["ok"], "error": DBSTATE["error"]}, "scorer": bool(SCORER_URL), "cf_vars_present": {"CF_ACCOUNT_ID": bool(CF_ACCOUNT), "CF_D1_DATABASE_ID": bool(CF_DB), "CF_API_TOKEN": bool(CF_TOKEN)}})
         if u.path.startswith("/api/"):
             return self.api("GET", u)
         if u.path == "/":
@@ -313,6 +315,22 @@ class H(SimpleHTTPRequestHandler):
                 q("INSERT INTO students(name,code_hash,created,seen) VALUES(?,?,?,?)", (name, h(raw), time.time(), time.time()))
                 return self.send_json({"name": name, "code": "-".join(raw[i:i + 4] for i in (0, 4, 8))}, 201)
 
+            if method == "POST" and p == "/api/score":                 # forwarded to the MMS scorer; the browser falls back if it is off
+                if not SCORER_URL:
+                    return self.send_json({"error": "scorer off"}, 503)
+                if not throttle(self.ip(), "score", 120, 600):
+                    return self.send_json({"error": "too many attempts, wait a few minutes"}, 429)
+                n = int(self.headers.get("Content-Length") or 0)
+                if n > 2_000_000:
+                    return self.send_json({"error": "recording too long"}, 413)
+                req = urllib.request.Request(SCORER_URL + "/score", data=self.rfile.read(n), method="POST",
+                                             headers={"Content-Type": "application/json", "X-Scorer-Key": SCORER_KEY})
+                try:
+                    with urllib.request.urlopen(req, timeout=25) as r:
+                        return self.send_json(json.load(r))
+                except (urllib.error.URLError, OSError, ValueError) as e:
+                    sys.stderr.write("scorer unreachable: %s\n" % e)
+                    return self.send_json({"error": "scorer unreachable"}, 503)
             if p.startswith("/api/") and p not in ("/api/verses",) and not p.startswith("/api/verses/"):
                 ensure_db()
             if method == "GET" and p == "/api/verses":
