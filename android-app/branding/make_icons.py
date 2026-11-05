@@ -37,7 +37,7 @@ def layers(src):
         body = re.sub(r'<circle[^>]*stroke-opacity="\.1\d"[^>]*/>', "", body)
         vb = re.search(r'viewBox="0 0 (\d+) (\d+)"', s).group(1)
         c = int(vb) / 2
-        body = re.sub(r"(<svg[^>]*>)", r'\1<g transform="translate(%g %g) scale(.7) translate(-%g -%g)">' % (c, c, c, c), body, count=1).replace("</svg>", "</g></svg>")
+        body = re.sub(r"(<svg[^>]*>)", r'\1<g transform="translate(%g %g) scale(.84) translate(-%g -%g)">' % (c, c, c, c), body, count=1).replace("</svg>", "</g></svg>")
         fg = chrome_png(body, 1000, os.path.join(OUT, "fg_1000.png"))
     else:
         art = Image.open(src).convert("RGBA")
