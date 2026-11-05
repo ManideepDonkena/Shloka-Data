@@ -33,6 +33,9 @@ HITS = {}                                              # ip -> [timestamps], for
 CF_ACCOUNT, CF_DB, CF_TOKEN = (os.environ.get(k, "") for k in ("CF_ACCOUNT_ID", "CF_D1_DATABASE_ID", "CF_API_TOKEN"))
 CF_BASE = os.environ.get("CF_API_BASE", "https://api.cloudflare.com/client/v4")
 USE_D1 = bool(CF_ACCOUNT and CF_DB and CF_TOKEN)
+_missing = [k for k, v in (("CF_ACCOUNT_ID", CF_ACCOUNT), ("CF_D1_DATABASE_ID", CF_DB), ("CF_API_TOKEN", CF_TOKEN)) if not v]
+if _missing and len(_missing) < 3:
+    sys.stderr.write("WARNING: Cloudflare D1 NOT used, these variables are empty or missing: %s\n" % ", ".join(_missing))
 
 
 class DbError(Exception):
@@ -145,7 +148,7 @@ class H(SimpleHTTPRequestHandler):
     def do_GET(self):
         u = urlparse(self.path)
         if u.path == "/healthz":
-            return self.send_json({"ok": True, "storage": "d1" if USE_D1 else "sqlite"})
+            return self.send_json({"ok": True, "storage": "d1" if USE_D1 else "sqlite", "cf_vars_present": {"CF_ACCOUNT_ID": bool(CF_ACCOUNT), "CF_D1_DATABASE_ID": bool(CF_DB), "CF_API_TOKEN": bool(CF_TOKEN)}})
         if u.path.startswith("/api/"):
             return self.api("GET", u)
         if u.path == "/":
