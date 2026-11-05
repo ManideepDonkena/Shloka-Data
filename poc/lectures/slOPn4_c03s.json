@@ -1,0 +1,63 @@
+{
+ "video": "slOPn4_c03s",
+ "verses": {
+  "6.20-23": {
+   "start": 1603.5,
+   "end": 4481.4,
+   "recited": false,
+   "together_with": [],
+   "recitations": [
+    {
+     "start": 1606.48,
+     "end": 1606.48,
+     "cover": 0,
+     "discussed_only": true
+    }
+   ],
+   "words": {
+    "yogasaṃjñitam": [
+     {
+      "start": 1611.4,
+      "end": 1633.4,
+      "said": "योगम योग संगीतम योगम [गाना गाने की आवाज़] योग संगीतम तम विद्या दुख संयोग विद्या दुख संयोग वियोगम योग संगीतम"
+     }
+    ],
+    "taṃ": [
+     {
+      "start": 1616.7,
+      "end": 1858.7,
+      "said": "तम विद्या दुख संयोग विद्या दुख संयोग वियोगम योग संगीतम योगम योग संगीतम"
+     }
+    ],
+    "cittaṃ": [
+     {
+      "start": 3621.3,
+      "end": 3686.4,
+      "said": "यदा विनयतम चित्तम आत्मनीतिष् कंट्रोल माइंड रेस्टेड नोवेयर बट इन रिमेंबेंस ऑफ़ कृष्णा फ्री फ्रॉम सर्व कर्मभ्री ट्रेस मटेरियल लोंगिंग वेदर फॉर "
+     }
+    ],
+    "sukhamātyantikaṃ": [
+     {
+      "start": 3685.4,
+      "end": 3715.8,
+      "said": "हार्ट ऑलरेडी फुल एंड सुखम अत्यंतिकम 6.2 द अबब्सोल्यूट हैप्पीनेस बिय्ड द सेंसेस वास सो एविडेंटली ह दैट इवन अ वुमेन सेंट"
+     }
+    ],
+    "vicālyate": [
+     {
+      "start": 3714.8,
+      "end": 3956.8,
+      "said": "यसिनो न दुख गुरु विचलते नॉट सिक सेकंड इवन बाय हेस्ट सरो इससे क्या दुख हो सकता है? चार लोग कोड़े में तुम्हें मार रहे हैं।"
+     }
+    ]
+   }
+  }
+ },
+ "missing": [],
+ "title": "BG 6.23 · \"दुःख के संग से अलग होना-योग\", श्रील हरिदास ठाकुर का उदाहरण",
+ "speaker": "HG Lila Purushottam Prabhu",
+ "channel": "Learn Gita Live Gita",
+ "url": "https://youtu.be/slOPn4_c03s",
+ "language": "Hindi",
+ "source": "auto: YouTube captions matched to the verse words (tts/lecture/segment_lecture.py); check and trim in lecture_editor.html"
+}

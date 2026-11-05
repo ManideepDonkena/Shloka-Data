@@ -1,2 +1,4 @@
 node_modules/
 *.apk
+__pycache__/
+*.pyc

@@ -43,11 +43,16 @@ def similar(a, b):
 def caption_words(path):
     j = json.load(open(path, encoding="utf-8"))
     out = []
-    for e in j["events"]:
+    for e in j.get("events", []):
+        t0 = e.get("tStartMs", 0)
         for s in e.get("segs") or []:
-            w = s.get("utf8", "").strip()
-            if w and not w.startswith("["):
-                out.append({"t": round((e["tStartMs"] + s.get("tOffsetMs", 0)) / 1000, 2), "w": w, "k": key(w, "deva")})
+            text = s.get("utf8", "").strip()
+            if not text or text.startswith("["):
+                continue
+            t_seg = (t0 + s.get("tOffsetMs", 0)) / 1000.0
+            words = [w for w in re.split(r"[\s\n]+", text) if w]
+            for wi, w in enumerate(words):
+                out.append({"t": round(t_seg + wi * 0.15, 2), "w": w, "k": key(w, "deva")})
     return out
 
 
@@ -77,10 +82,23 @@ def hits(words, terms):
     return res
 
 
-def main(vid, first, last, caps, out=None):
+def main(vid, first, last, caps, out=None, title=None, speaker=None, channel=None, url=None):
     tts = {v["id"]: v for v in json.load(open(TTS, encoding="utf-8"))}
     ch, a, b = first.split(".")[0], int(first.split(".")[1]), int(last.split(".")[1])
-    ids = [f"{ch}.{n}" for n in range(a, b + 1) if f"{ch}.{n}" in tts]
+    ids = []
+    for vid_ in tts.keys():
+        if not vid_.startswith(f"{ch}."):
+            continue
+        rest = vid_.split(".")[1]
+        if "-" in rest:
+            p1, p2 = map(int, rest.split("-"))
+            if max(a, p1) <= min(b, p2):
+                ids.append(vid_)
+        else:
+            n = int(rest)
+            if a <= n <= b:
+                ids.append(vid_)
+    ids.sort(key=lambda x: int(x.split(".")[1].split("-")[0]))
     words = caption_words(caps)
     end_all = words[-1]["t"] if words else 0
     found = {}
@@ -141,6 +159,16 @@ def main(vid, first, last, caps, out=None):
             verses[v] = {"start": round(s0, 1), "end": round(b1, 1), "recited": not f["recitations"][0].get("discussed_only"),
                          "together_with": [x for x in blk if x != v], "recitations": f["recitations"], "words": wl}
     res = {"video": vid, "verses": verses, "missing": [v for v in ids if v not in verses]}
+    if title:
+        res["title"] = title
+    if speaker:
+        res["speaker"] = speaker
+    if channel:
+        res["channel"] = channel
+    if url:
+        res["url"] = url
+    res["language"] = "Hindi"
+    res["source"] = "auto: YouTube captions matched to the verse words (tts/lecture/segment_lecture.py); check and trim in lecture_editor.html"
     if out:
         json.dump(res, open(out, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     return res
