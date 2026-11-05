@@ -1,9 +1,8 @@
 # Render Blueprint: Shloka learner app (static pages + student API) as ONE free web service in Singapore.
 # Render dashboard > New > Blueprint > pick this repo. No build step (standard library only).
 #
-# Student data (names, marks, practice scores) lives in SQLite. On the FREE plan the disk is wiped on every
-# deploy/restart, so for real students add a persistent disk (a paid starter plan) -- see the commented block --
-# or point DB_PATH at a mounted disk. Ask the owner before switching to a paid plan.
+# Student data (names, marks, practice scores) is stored in Cloudflare D1 when the CF_* variables below are set.
+# Without them it falls back to SQLite on the web service's disk, which the FREE plan wipes on every deploy.
 services:
   - type: web
     name: shloka-learn
@@ -19,6 +18,14 @@ services:
       - key: PYTHON_VERSION
         value: "3.12.3"
       - key: TEACHER_KEY        # password for /teacher.html; leave blank in the dashboard to switch the teacher view off
+        sync: false
+      # --- student data in Cloudflare D1 (free, survives Render deploys) -- see app/README.md for the 4-step setup.
+      #     Leave all three blank to fall back to local SQLite (wiped on every deploy on the free plan).
+      - key: CF_ACCOUNT_ID
+        sync: false
+      - key: CF_D1_DATABASE_ID
+        sync: false
+      - key: CF_API_TOKEN       # API token with "D1 Edit" permission only
         sync: false
       # --- persistent storage (paid plans only): uncomment this block and the disk below ---
       # - key: DB_PATH

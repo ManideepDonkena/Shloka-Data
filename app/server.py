@@ -1,6 +1,7 @@
 """Shloka learner app: serves poc/ (read-only) and a small student API. Standard library only.
 
-    python app/server.py            # PORT env (default 8000), DB_PATH env (default app/students.db)
+    python app/server.py            # PORT env (default 8000); storage: Cloudflare D1 if CF_ACCOUNT_ID, CF_D1_DATABASE_ID and
+                                    # CF_API_TOKEN are set, else SQLite at DB_PATH (default app/students.db)
 
 Students sign up with just a display name and get a private sign-in code (no e-mail, no password, no audio is stored).
 The page keeps the code in the browser; typing it on another device gives the same progress.
@@ -13,7 +14,7 @@ The page keeps the code in the browser; typing it on another device gives the sa
   GET  /api/teacher/students  (X-Teacher-Key = $TEACHER_KEY; disabled when unset) -> all students + summaries
   GET  /healthz
 """
-import hashlib, hmac, json, os, re, secrets, sqlite3, sys, threading, time
+import hashlib, hmac, json, os, re, secrets, sqlite3, sys, threading, time, urllib.request, urllib.error
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -28,22 +29,57 @@ LOCK = threading.Lock()
 HITS = {}                                              # ip -> [timestamps], for sign-up / bad-code throttling
 
 
-def db():
+# ---- storage: Cloudflare D1 (over its REST API) when CF_* are set, otherwise a local SQLite file -------------------------
+CF_ACCOUNT, CF_DB, CF_TOKEN = (os.environ.get(k, "") for k in ("CF_ACCOUNT_ID", "CF_D1_DATABASE_ID", "CF_API_TOKEN"))
+CF_BASE = os.environ.get("CF_API_BASE", "https://api.cloudflare.com/client/v4")
+USE_D1 = bool(CF_ACCOUNT and CF_DB and CF_TOKEN)
+
+
+class DbError(Exception):
+    pass
+
+
+def q(sql, params=()):
+    """Run one statement, return rows as dicts (empty list for writes)."""
+    if USE_D1:
+        req = urllib.request.Request(
+            f"{CF_BASE}/accounts/{CF_ACCOUNT}/d1/database/{CF_DB}/query",
+            data=json.dumps({"sql": sql, "params": list(params)}).encode(), method="POST",
+            headers={"Authorization": f"Bearer {CF_TOKEN}", "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=15) as r:
+                j = json.load(r)
+        except (urllib.error.URLError, OSError, ValueError) as e:
+            raise DbError(str(e))
+        if not j.get("success"):
+            raise DbError(json.dumps(j.get("errors"))[:300])
+        res = j.get("result") or [{}]
+        return res[0].get("results") or []
     c = sqlite3.connect(DB_PATH, timeout=10)
-    c.row_factory = sqlite3.Row
-    return c
+    try:
+        c.row_factory = lambda cur, row: {d[0]: v for d, v in zip(cur.description, row)}
+        rows = c.execute(sql, tuple(params)).fetchall()
+        c.commit()
+        return rows
+    finally:
+        c.close()
+
+
+SCHEMA = [
+    """CREATE TABLE IF NOT EXISTS students(id INTEGER PRIMARY KEY, name TEXT NOT NULL, code_hash TEXT UNIQUE NOT NULL,
+        created REAL NOT NULL, seen REAL NOT NULL, state TEXT NOT NULL DEFAULT '{}')""",
+    """CREATE TABLE IF NOT EXISTS attempts(id INTEGER PRIMARY KEY, student_id INTEGER NOT NULL REFERENCES students(id),
+        verse TEXT NOT NULL, unit TEXT NOT NULL, idx INTEGER NOT NULL, score INTEGER, sound INTEGER, pace INTEGER,
+        ratio REAL, detail TEXT, ts REAL NOT NULL)""",
+    "CREATE INDEX IF NOT EXISTS att_student ON attempts(student_id, verse, ts)",
+]
 
 
 def init():
-    os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
-    with db() as c:
-        c.executescript("""
-        CREATE TABLE IF NOT EXISTS students(id INTEGER PRIMARY KEY, name TEXT NOT NULL, code_hash TEXT UNIQUE NOT NULL,
-            created REAL NOT NULL, seen REAL NOT NULL, state TEXT NOT NULL DEFAULT '{}');
-        CREATE TABLE IF NOT EXISTS attempts(id INTEGER PRIMARY KEY, student_id INTEGER NOT NULL REFERENCES students(id),
-            verse TEXT NOT NULL, unit TEXT NOT NULL, idx INTEGER NOT NULL, score INTEGER, sound INTEGER, pace INTEGER,
-            ratio REAL, detail TEXT, ts REAL NOT NULL);
-        CREATE INDEX IF NOT EXISTS att_student ON attempts(student_id, verse, ts);""")
+    if not USE_D1:
+        os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
+    for st in SCHEMA:
+        q(st)
 
 
 def h(code):
@@ -99,10 +135,10 @@ class H(SimpleHTTPRequestHandler):
             return None
         if not throttle(self.ip(), "auth", 120, 600):
             return None
-        with db() as c:
-            r = c.execute("SELECT * FROM students WHERE code_hash=?", (h(code.replace("-", "")),)).fetchone()
-            if r:
-                c.execute("UPDATE students SET seen=? WHERE id=?", (time.time(), r["id"]))
+        rows = q("SELECT * FROM students WHERE code_hash=?", (h(code.replace("-", "")),))
+        r = rows[0] if rows else None
+        if r and time.time() - r["seen"] > 300:          # one write per 5 min is plenty (fewer D1 round trips)
+            q("UPDATE students SET seen=? WHERE id=?", (time.time(), r["id"]))
         return r
 
     # ---- routing -------------------------------------------------------
@@ -138,19 +174,17 @@ class H(SimpleHTTPRequestHandler):
                 if not name:
                     return self.send_json({"error": "name required"}, 400)
                 raw = "".join(secrets.choice(ALPHABET) for _ in range(12))
-                with db() as c:
-                    c.execute("INSERT INTO students(name,code_hash,created,seen) VALUES(?,?,?,?)", (name, h(raw), time.time(), time.time()))
+                q("INSERT INTO students(name,code_hash,created,seen) VALUES(?,?,?,?)", (name, h(raw), time.time(), time.time()))
                 return self.send_json({"name": name, "code": "-".join(raw[i:i + 4] for i in (0, 4, 8))}, 201)
 
             if p == "/api/teacher/students" and method == "GET":
                 if not TEACHER_KEY or not hmac.compare_digest(self.headers.get("X-Teacher-Key", ""), TEACHER_KEY):
                     return self.send_json({"error": "forbidden"}, 403)
-                with db() as c:
-                    rows = c.execute("""SELECT s.id,s.name,s.created,s.seen,s.state,
-                        (SELECT COUNT(*) FROM attempts a WHERE a.student_id=s.id) n,
-                        (SELECT ROUND(AVG(score)) FROM attempts a WHERE a.student_id=s.id) avg,
-                        (SELECT MAX(ts) FROM attempts a WHERE a.student_id=s.id) last
-                        FROM students s ORDER BY s.seen DESC LIMIT 500""").fetchall()
+                rows = q("""SELECT s.id,s.name,s.created,s.seen,s.state,
+                    (SELECT COUNT(*) FROM attempts a WHERE a.student_id=s.id) n,
+                    (SELECT ROUND(AVG(score)) FROM attempts a WHERE a.student_id=s.id) avg,
+                    (SELECT MAX(ts) FROM attempts a WHERE a.student_id=s.id) last
+                    FROM students s ORDER BY s.seen DESC LIMIT 500""")
                 out = []
                 for r in rows:
                     m = json.loads(r["state"] or "{}").get("marks", {})
@@ -165,10 +199,9 @@ class H(SimpleHTTPRequestHandler):
                 return self.send_json({"error": "sign in"}, 401)
 
             if p == "/api/me" and method == "GET":
-                with db() as c:
-                    pr = c.execute("""SELECT verse, COUNT(*) n, MAX(score) best, CAST(ROUND(AVG(score)) AS INT) avg, MAX(ts) last
-                        FROM attempts WHERE student_id=? GROUP BY verse""", (s["id"],)).fetchall()
-                return self.send_json({"name": s["name"], "state": json.loads(s["state"] or "{}"), "progress": {r["verse"]: dict(r) for r in pr}})
+                pr = q("""SELECT verse, COUNT(*) n, MAX(score) best, CAST(ROUND(AVG(score)) AS INT) avg, MAX(ts) last
+                    FROM attempts WHERE student_id=? GROUP BY verse""", (s["id"],))
+                return self.send_json({"name": s["name"], "state": json.loads(s["state"] or "{}"), "progress": {r["verse"]: r for r in pr}})
             if p == "/api/me/state" and method == "PUT":
                 st = self.body().get("state")
                 if not isinstance(st, dict):
@@ -176,8 +209,7 @@ class H(SimpleHTTPRequestHandler):
                 raw = json.dumps(st, separators=(",", ":"))
                 if len(raw) > 65536:
                     return self.send_json({"error": "state too large"}, 413)
-                with db() as c:
-                    c.execute("UPDATE students SET state=? WHERE id=?", (raw, s["id"]))
+                q("UPDATE students SET state=? WHERE id=?", (raw, s["id"]))
                 return self.send_json({"ok": True})
             if p == "/api/attempts" and method == "POST":
                 b = self.body()
@@ -186,23 +218,27 @@ class H(SimpleHTTPRequestHandler):
                     return self.send_json({"error": "bad attempt"}, 400)
                 det = json.dumps(b.get("detail") or {}, separators=(",", ":"))[:8000]
                 num = lambda k, lo, hi: max(lo, min(hi, int(b.get(k) or 0)))
-                with db() as c:
-                    c.execute("INSERT INTO attempts(student_id,verse,unit,idx,score,sound,pace,ratio,detail,ts) VALUES(?,?,?,?,?,?,?,?,?,?)",
-                              (s["id"], verse, unit, num("idx", 0, 99), num("score", 0, 100), num("sound", 0, 100), num("pace", 0, 100),
-                               round(float(b.get("ratio") or 0), 2), det, time.time()))
+                q("INSERT INTO attempts(student_id,verse,unit,idx,score,sound,pace,ratio,detail,ts) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                  (s["id"], verse, unit, num("idx", 0, 99), num("score", 0, 100), num("sound", 0, 100), num("pace", 0, 100),
+                   round(float(b.get("ratio") or 0), 2), det, time.time()))
                 return self.send_json({"ok": True}, 201)
             if p == "/api/attempts" and method == "GET":
                 v = parse_qs(u.query).get("verse", [""])[0]
-                with db() as c:
-                    rows = c.execute("SELECT unit,idx,score,sound,pace,ratio,ts FROM attempts WHERE student_id=? AND verse=? ORDER BY ts DESC LIMIT 100", (s["id"], v)).fetchall()
-                return self.send_json({"attempts": [dict(r) for r in rows]})
+                rows = q("SELECT unit,idx,score,sound,pace,ratio,ts FROM attempts WHERE student_id=? AND verse=? ORDER BY ts DESC LIMIT 100", (s["id"], v))
+                return self.send_json({"attempts": rows})
             return self.send_json({"error": "not found"}, 404)
         except (ValueError, json.JSONDecodeError):
             return self.send_json({"error": "bad request"}, 400)
+        except DbError as e:
+            sys.stderr.write("database error: %s\n" % e)
+            return self.send_json({"error": "database unavailable, try again"}, 503)
 
 
 if __name__ == "__main__":
-    init()
+    try:
+        init()
+    except DbError as e:
+        sys.exit(f"cannot reach the database: {e}\nCheck CF_ACCOUNT_ID, CF_D1_DATABASE_ID and CF_API_TOKEN (token needs 'D1 Edit').")
     port = int(os.environ.get("PORT", "8000"))
-    print(f"serving {ROOT} + API on :{port}, db {DB_PATH}, teacher view {'on' if TEACHER_KEY else 'off'}", flush=True)
+    print(f"serving {ROOT} + API on :{port}, db {'Cloudflare D1' if USE_D1 else DB_PATH}, teacher view {'on' if TEACHER_KEY else 'off'}", flush=True)
     ThreadingHTTPServer(("0.0.0.0", port), H).serve_forever()
