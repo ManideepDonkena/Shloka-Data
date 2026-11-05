@@ -43,7 +43,14 @@ select{padding:8px 10px;border-radius:12px;border:1px solid var(--line);backgrou
 .prog{height:5px;border-radius:5px;background:var(--cream);overflow:hidden;margin-top:14px}.prog i{display:block;height:100%;width:0;background:var(--teal);transition:width .3s}
 h4{margin:0 0 4px;font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
 .card{margin-top:12px;background:var(--card);border-radius:16px;padding:12px 16px;box-shadow:var(--shadow)}.card #tr{font:400 1.08rem/1.6 "Noto Serif",Georgia,serif}
-.purp p{margin:0 0 .7em}.purp{line-height:1.65;font-size:.95rem}
+.purp{padding:2px 18px 20px;max-width:64ch;margin:0 auto;font:400 1.04rem/1.8 "Noto Serif",Georgia,serif;hyphens:auto;-webkit-hyphens:auto;overflow-wrap:anywhere}
+.purp p{margin:0 0 1.1em}.purp p:last-child{margin-bottom:0}
+details.purpd{margin-top:12px;background:var(--card);box-shadow:var(--shadow);border-radius:16px;padding:0;overflow:hidden}
+details.purpd>summary{list-style:none;cursor:pointer;display:flex;align-items:baseline;gap:10px;padding:14px 18px;font-weight:600}
+details.purpd>summary::-webkit-details-marker{display:none}
+details.purpd>summary::after{content:'▾';margin-left:auto;color:var(--muted);transition:transform .2s}details.purpd[open]>summary::after{transform:rotate(180deg)}
+details.purpd>summary small{font:400 .85rem "DM Sans";color:var(--muted)}
+details.purpd[open]>summary{border-bottom:1px solid var(--line);margin-bottom:14px}
 details.tr{margin-top:12px;background:var(--cream);border-radius:14px;padding:10px 14px}details.tr summary{cursor:pointer;font-weight:600}details.tr div{margin-top:6px}
 .dock{border-top:1px solid var(--line);background:var(--paper);padding:8px 0 calc(10px + env(safe-area-inset-bottom));text-align:center}
 .stage{font-size:.95rem;color:var(--muted);min-height:1.3em}.stage b{color:var(--ink)}.stage.turn b{color:var(--blue)}
@@ -100,7 +107,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
   <p class="note hint" id="tierNote"></p>
   <details class="tr" id="fullv"><summary>Full verse, as chanted (sandhi joined)</summary><div class="full" id="fullTxt"></div></details>
   <section class="card"><h4>Translation</h4><div id="tr"></div></section>
-  <details class="tr" id="purp"><summary>Purport</summary><div id="purpTxt" class="purp"></div></details>
+  <details class="purpd" id="purp"><summary>Purport <small id="purpMeta"></small></summary><div id="purpTxt" class="purp"></div></details>
   <div class="prog"><i id="progBar"></i></div><div class="note" id="markNote" style="margin-top:4px;text-align:center"></div>
   <div class="vnav"><button id="vPrev">‹ <span></span></button><button id="vNext"><span></span> ›</button></div>
 </div></main>
@@ -266,9 +273,12 @@ function draw(){if(!V)return;const keep=$('#scroll').scrollTop;
 
 let PU=null;
 async function paintPurport(){const d=$('#purp'),t=$('#purpTxt');t.textContent='';
-  if(!PU){try{PU=await (await fetch('purports.json')).json()}catch(e){PU={}}}
-  const txt=(PU[V.id]||'').trim();d.hidden=!txt;t.innerHTML='';
-  txt.split(/\n+/).forEach(x=>{const p=document.createElement('p');p.textContent=x;t.append(p)})}
+  let txt=(V.purport||'').trim();
+  if(!txt){if(!PU){try{PU=await (await fetch('purports.json')).json()}catch(e){PU={}}}txt=(PU[V.id]||'').trim()}
+  d.hidden=!txt;d.open=false;if(!txt)return;
+  const ps=txt.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  ps.forEach(x=>{const p=document.createElement('p');p.textContent=x;t.append(p)});
+  const w=txt.split(/\s+/).length;$('#purpMeta').textContent=`· ${Math.max(1,Math.round(w/200))} min read`}
 function paintSel(){document.querySelectorAll('.sel-g').forEach(e=>e.classList.remove('sel-g'));
   const u=UN[SELI];if(!u)return;u.el.classList.add('sel-g');
   if(!RUN)$('#stage').innerHTML=`<b>${tier==='verse'?'Whole verse':NAME[tier]+' '+(SELI+1)+' of '+UN.length}</b>`;
