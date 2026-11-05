@@ -1,6 +1,8 @@
 /* Student account (name + private code, progress synced to the server) and chant feedback UI for learn.html.
    Loaded after learn.html's main script; uses its globals ($, MK, saveMk, AC, BUF, UN, SELI, ALLW, V, tier ...). */
-const api=async(m,p,b)=>{const h={'Content-Type':'application/json'};const c=lsGet('shlokaCode','');if(c)h['X-Student-Code']=c;
+/* In the Android app the page is served from https://localhost, so the API lives on the real server. */
+const API_BASE=(window.Capacitor&&location.hostname==='localhost')?'https://shloka-learn.onrender.com/':'';
+const api=async(m,p0,b)=>{const p=API_BASE+p0;const h={'Content-Type':'application/json'};const c=lsGet('shlokaCode','');if(c)h['X-Student-Code']=c;
   const r=await fetch(p,{method:m,headers:h,body:b===undefined?undefined:JSON.stringify(b)});let j={};try{j=await r.json()}catch(e){}
   if(!r.ok)throw Object.assign(new Error(j.error||r.status),{status:r.status});return j};
 const ST={name:lsGet('shlokaName',''),progress:{},server:true};
