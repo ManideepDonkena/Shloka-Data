@@ -20,7 +20,7 @@ select{padding:8px 10px;border-radius:12px;border:1px solid var(--line);backgrou
 .seg button{border:0;background:transparent;border-radius:11px;padding:6px 2px;line-height:1.2;font-size:.92rem}
 .seg button[aria-pressed=true]{background:var(--gold);color:#183b45;font-weight:600}
 .scroll{overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;min-height:0}
-.scroll .wrap{padding-top:14px;padding-bottom:28px}
+.scroll .wrap{padding-top:14px;padding-bottom:calc(56px + env(safe-area-inset-bottom))}   /* room so the last buttons are never under the player */
 .meta{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .meta .ref{font:600 1.15rem "Noto Serif",Georgia,serif}.meta small{display:block;font:400 .88rem "DM Sans";color:var(--muted)}
 .chip{border:1px solid var(--line);background:var(--cream);border-radius:999px;padding:5px 12px;font-size:.88rem}
@@ -82,6 +82,8 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
 .iw .s{font:italic 400 .82rem/1.25 "Noto Serif",Georgia,serif;color:var(--blue);margin-top:2px}
 .full{font:500 1.15rem/1.8 "Noto Serif Devanagari",Georgia,serif;text-align:center;white-space:pre-line}
 .stars{color:#e0971a;letter-spacing:2px;margin-left:8px;font-size:.95em}.streak{color:var(--warn);font-weight:600}
+.dkrow{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:6px;flex-wrap:wrap}.dkrow .sum{margin-top:0}
+.dkn{border:1px solid var(--teal);background:transparent;color:var(--teal);border-radius:999px;padding:5px 14px;font-weight:600;font-size:.92rem}.dkn:disabled{opacity:.35;cursor:default}
 </style></head><body>
 <header class="top"><div class="wrap">
   <div class="bar1">
@@ -115,7 +117,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
     <button class="big" id="all" aria-label="Start practice" aria-pressed="false">▶</button>
     <button class="ic" id="nu" aria-label="Next">⏭</button>
   </div>
-  <button class="sum" id="sum"></button>
+  <div class="dkrow"><button class="sum" id="sum"></button><button class="dkn" id="dockNext">Next verse ›</button></div>
 </div></footer>
 
 <div class="sheet" id="tocSheet" role="dialog" aria-label="Choose a verse"><div class="bk" data-close></div><div class="pn"><div class="in">
@@ -215,7 +217,7 @@ async function loadSource(k){
 function load(i){IDX=Math.max(0,Math.min(LIST.length-1,i));V=LIST[IDX];BUF=null;bufUrl=null;SELI=0;CHAP=V.chapter;draw();$('#scroll').scrollTop=0}
 function pick(i){stop();SFX.play('whoosh');load(i);if($('#autoplay').checked)session(0)}
 $('#src').onchange=e=>{stop();loadSource(e.target.value)};
-$('#vPrev').onclick=()=>pick(IDX-1);$('#vNext').onclick=()=>pick(IDX+1);$('#prev').onclick=()=>pick(IDX-1);$('#next').onclick=()=>pick(IDX+1);
+$('#dockNext').onclick=()=>{const was=RUN;pick(IDX+1);if(was&&!$('#autoplay').checked)session(0)};$('#vPrev').onclick=()=>pick(IDX-1);$('#vNext').onclick=()=>pick(IDX+1);$('#prev').onclick=()=>pick(IDX-1);$('#next').onclick=()=>pick(IDX+1);
 
 /* chapter -> verse sheet (like the app's chapter page) */
 function openSheet(id){$(id).classList.add('open')}
@@ -427,7 +429,7 @@ function paintMarks(){const m=MK[V.id]||{};if(typeof clearFb==='function')clearF
   $('#vstars').textContent=starText(V.id);
   {const n=streak();if(n)$('#markNote').innerHTML+=` · <span class="streak">${n}-day streak</span>`}
   $('#prev').disabled=IDX<=0;$('#next').disabled=IDX>=LIST.length-1;
-  $('#vPrev').disabled=IDX<=0;$('#vNext').disabled=IDX>=LIST.length-1;
+  $('#dockNext').disabled=IDX>=LIST.length-1;$('#vPrev').disabled=IDX<=0;$('#vNext').disabled=IDX>=LIST.length-1;
   $('#vPrev span').textContent=IDX>0?'BG '+LIST[IDX-1].id:'';$('#vNext span').textContent=IDX<LIST.length-1?'Next verse · BG '+LIST[IDX+1].id:'Last verse';if(typeof paintBest==='function')paintBest()}
 $('#star').onclick=()=>{const m=MK[V.id]=MK[V.id]||{};m.star=!m.star;saveMk();paintMarks();if(m.star)SFX.play('pop')};
 $('#done').onclick=()=>{const m=MK[V.id]=MK[V.id]||{};m.done=!m.done;saveMk();paintMarks();if(m.done){SFX.play('conch');SFX.buzz([30,50,30])}};
