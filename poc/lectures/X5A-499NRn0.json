@@ -1,0 +1,216 @@
+{
+ "video": "X5A-499NRn0",
+ "verses": {
+  "6.37": {
+   "start": 1720.3,
+   "end": 1876.8,
+   "recited": true,
+   "together_with": [],
+   "words": {
+    "gacchati": [
+     {
+      "start": 1835.1,
+      "end": 1850.3
+     }
+    ],
+    "yoga-saṁsiddhiṁ": [
+     {
+      "start": 1849.3,
+      "end": 1876.8
+     }
+    ]
+   }
+  },
+  "6.38": {
+   "start": 1876.8,
+   "end": 2065.3,
+   "recited": false,
+   "together_with": [],
+   "words": {
+    "apratiṣṭho": [
+     {
+      "start": 1880.8,
+      "end": 1902.8
+     }
+    ],
+    "brahmaṇaḥ": [
+     {
+      "start": 1884.2,
+      "end": 1917.8
+     }
+    ],
+    "nobhaya-vibhraṣṭaś": [
+     {
+      "start": 1916.8,
+      "end": 1974.3
+     }
+    ],
+    "chinnābhram": [
+     {
+      "start": 1973.3,
+      "end": 2065.3
+     }
+    ]
+   }
+  },
+  "6.39": {
+   "start": 2066.4,
+   "end": 2216.7,
+   "recited": false,
+   "together_with": [],
+   "words": {
+    "kṛṣṇa": [
+     {
+      "start": 2069.5,
+      "end": 2091.5
+     }
+    ],
+    "saṁśayaṁ": [
+     {
+      "start": 2072.0,
+      "end": 2087.5
+     }
+    ],
+    "upapadyate": [
+     {
+      "start": 2086.5,
+      "end": 2132.6
+     }
+    ],
+    "tvad-anyaḥ": [
+     {
+      "start": 2131.6,
+      "end": 2216.7
+     }
+    ]
+   }
+  },
+  "6.40": {
+   "start": 2216.7,
+   "end": 2715.0,
+   "recited": true,
+   "together_with": [],
+   "words": {
+    "durgatiṁ": [
+     {
+      "start": 2509.1,
+      "end": 2531.1
+     }
+    ],
+    "nāmutra": [
+     {
+      "start": 2512.4,
+      "end": 2581.7
+     }
+    ],
+    "kalyāṇa-kṛt": [
+     {
+      "start": 2580.7,
+      "end": 2646.2
+     }
+    ],
+    "tāta": [
+     {
+      "start": 2645.2,
+      "end": 2715.0
+     }
+    ]
+   }
+  },
+  "6.41": {
+   "start": 2715.0,
+   "end": 2959.9,
+   "recited": true,
+   "together_with": [],
+   "words": {
+    "puṇya-kṛtāṁ": [
+     {
+      "start": 2883.6,
+      "end": 2900.8
+     }
+    ],
+    "śrīmatāṁ": [
+     {
+      "start": 2899.8,
+      "end": 2959.9
+     }
+    ]
+   }
+  },
+  "6.42": {
+   "start": 2959.9,
+   "end": 3733.9,
+   "recited": true,
+   "together_with": [],
+   "words": {
+    "yoginām": [
+     {
+      "start": 3020.1,
+      "end": 3047.2
+     }
+    ],
+    "dhīmatām": [
+     {
+      "start": 3046.2,
+      "end": 3068.2
+     }
+    ],
+    "kule": [
+     {
+      "start": 3047.9,
+      "end": 3069.9
+     }
+    ],
+    "bhavati": [
+     {
+      "start": 3048.4,
+      "end": 3062.3
+     }
+    ],
+    "janma": [
+     {
+      "start": 3061.3,
+      "end": 3303.3
+     }
+    ],
+    "durlabha-taraṁ": [
+     {
+      "start": 3636.6,
+      "end": 3658.6
+     }
+    ],
+    "loke": [
+     {
+      "start": 3638.6,
+      "end": 3733.9
+     }
+    ]
+   }
+  },
+  "6.43": {
+   "start": 3733.9,
+   "end": 3898.2,
+   "recited": true,
+   "together_with": [
+    "6.44"
+   ],
+   "words": {}
+  },
+  "6.44": {
+   "start": 3787.1,
+   "end": 3898.2,
+   "recited": true,
+   "together_with": [
+    "6.43"
+   ],
+   "words": {}
+  }
+ },
+ "missing": [],
+ "title": "BG 6.37-44 · आध्यात्मिकता में तरक्की का कभी ह्रास नहीं होता (Part 1)",
+ "speaker": "HG Lila Purushottam Prabhu",
+ "channel": "Learn Gita Live Gita",
+ "url": "https://www.youtube.com/live/X5A-499NRn0",
+ "language": "Hindi",
+ "source": "auto: YouTube captions matched to the verse words (tts/lecture/segment_lecture.py); check and trim in lecture_editor.html"
+}

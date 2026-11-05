@@ -87,6 +87,7 @@ SCHEMA = [
         verse TEXT NOT NULL, unit TEXT NOT NULL, idx INTEGER NOT NULL, score INTEGER, sound INTEGER, pace INTEGER,
         ratio REAL, detail TEXT, ts REAL NOT NULL)""",
     "CREATE INDEX IF NOT EXISTS att_student ON attempts(student_id, verse, ts)",
+    "CREATE TABLE IF NOT EXISTS lectures(video TEXT PRIMARY KEY, data TEXT NOT NULL, edited INTEGER NOT NULL DEFAULT 0, updated REAL NOT NULL)",
     "CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY, student_id INTEGER NOT NULL, created REAL NOT NULL)",
     """CREATE TABLE IF NOT EXISTS verses(id TEXT PRIMARY KEY, chapter INTEGER NOT NULL, shloka TEXT NOT NULL, ord INTEGER NOT NULL,
         h TEXT NOT NULL, data TEXT NOT NULL, purport TEXT NOT NULL DEFAULT '')""",
@@ -128,6 +129,28 @@ def seed_verses():
     return True
 
 
+LCACHE = {"t": 0, "body": None}
+
+
+def seed_lectures():
+    """poc/lectures/<video>.json -> the lectures table. A lecture edited in lecture_editor.html is never overwritten."""
+    d = os.path.join(ROOT, "lectures")
+    try:
+        ids = json.load(open(os.path.join(d, "index.json"), encoding="utf-8")).get("lectures", [])
+    except OSError:
+        return
+    have = {r["video"]: r for r in q("SELECT video, data, edited FROM lectures")}
+    for vid in ids:
+        try:
+            body = json.dumps(json.load(open(os.path.join(d, vid + ".json"), encoding="utf-8")), ensure_ascii=False)
+        except (OSError, ValueError):
+            continue
+        r = have.get(vid)
+        if not r or (not r["edited"] and r["data"] != body):
+            q("INSERT OR REPLACE INTO lectures(video, data, edited, updated) VALUES(?,?,0,?)", (vid, body, time.time()))
+    LCACHE["body"] = None
+
+
 def seed_loop():
     while not seed_verses():
         time.sleep(60)
@@ -135,6 +158,10 @@ def seed_loop():
             ensure_db()
         except DbError:
             pass
+    try:
+        seed_lectures()
+    except Exception as e:                      # lectures are optional; the page falls back to the static files
+        sys.stderr.write("lecture seeding failed: %s\n" % e)
 
 
 
@@ -333,6 +360,24 @@ class H(SimpleHTTPRequestHandler):
                     return self.send_json({"error": "scorer unreachable"}, 503)
             if p.startswith("/api/") and p not in ("/api/verses",) and not p.startswith("/api/verses/"):
                 ensure_db()
+            if method == "GET" and p == "/api/lectures":
+                if LCACHE["body"] is None or time.time() - LCACHE["t"] > 120:
+                    LCACHE["body"] = [json.loads(r["data"]) | {"edited": bool(r["edited"])} for r in q("SELECT data, edited FROM lectures")]
+                    LCACHE["t"] = time.time()
+                return self.send_json({"lectures": LCACHE["body"]})
+            if method == "PUT" and p.startswith("/api/lectures/"):        # saved from lecture_editor.html
+                if not TEACHER_KEY or not hmac.compare_digest(self.headers.get("X-Teacher-Key", ""), TEACHER_KEY):
+                    return self.send_json({"error": "wrong teacher key"}, 403)
+                vid = p[len("/api/lectures/"):]
+                n = int(self.headers.get("Content-Length") or 0)
+                if not re.fullmatch(r"[A-Za-z0-9_-]{6,20}", vid) or n > 400_000:
+                    return self.send_json({"error": "bad lecture"}, 400)
+                d = json.loads(self.rfile.read(n))
+                if d.get("video") != vid or not isinstance(d.get("verses"), dict):
+                    return self.send_json({"error": "bad lecture"}, 400)
+                q("INSERT OR REPLACE INTO lectures(video, data, edited, updated) VALUES(?,?,1,?)", (vid, json.dumps(d, ensure_ascii=False), time.time()))
+                LCACHE["body"] = None
+                return self.send_json({"ok": True})
             if method == "GET" and p == "/api/verses":
                 if not VSTATE["ready"]:
                     return self.send_json({"ready": False, "done": VSTATE["done"], "total": VSTATE["total"], "error": VSTATE["error"]})
