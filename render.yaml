@@ -17,6 +17,10 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.3"
+      - key: SCORER_URL         # the MMS word scorer (app/scorer.py) on a GPU machine, e.g. through a Cloudflare tunnel; blank = off
+        sync: false
+      - key: SCORER_KEY         # shared secret, same value as on the scorer
+        sync: false
       - key: TEACHER_KEY        # password for /teacher.html; leave blank in the dashboard to switch the teacher view off
         sync: false
       # --- student data in Cloudflare D1 (free, survives Render deploys) -- see app/README.md for the 4-step setup.

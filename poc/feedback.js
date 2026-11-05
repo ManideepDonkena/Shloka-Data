@@ -90,6 +90,19 @@ function compare(ref,me,others){
   if(sound<0.35)tips.push('The sound is quite different from the reference — listen once more, then chant along with it.');
   return{ok:true,score:total,sound:Math.round(100*sound),pace:Math.round(100*pace),ratio:+ratio.toFixed(2),cost:+cost.toFixed(3),words,tips}}
 
-root.ChantFeedback={compare,features,trim,dtw,SR};
+/* Did someone chant? Voiced frames = periodic (a pitch between 70 and 400 Hz, normalised autocorrelation > 0.5) and
+   at least 10 dB above the recording's own floor. Noise, a fan or silence (even boosted by the mic's auto-gain) is not
+   periodic, so it does not count. Returns seconds of voicing and where the chanting starts and ends. */
+function voicing(x,sr){x=resample(x,sr);const W=640,Hp=160,n=Math.max(0,1+Math.floor((x.length-W)/Hp)),en=new Float32Array(n);
+  for(let f=0;f<n;f++){let e=0;for(let i=0;i<W;i++){const v=x[f*Hp+i];e+=v*v}en[f]=e/W}
+  const srt=Array.from(en).sort((a,b)=>a-b),floor=srt[Math.floor(0.1*(n-1))]||0,peak=srt[n-1]||0;
+  let vc=0,first=-1,last=-1;
+  for(let f=0;f<n;f++){if(en[f]<floor*3||en[f]<1e-7||en[f]<peak*1e-3)continue;
+    const o=f*Hp;let best=0;let e0=0;for(let i=0;i<W-228;i++)e0+=x[o+i]*x[o+i];
+    for(let L=40;L<=228;L+=2){let c=0,e1=0;for(let i=0;i<W-228;i++){c+=x[o+i]*x[o+i+L];e1+=x[o+i+L]*x[o+i+L]}const r=c/Math.sqrt(e0*e1+1e-12);if(r>best)best=r}
+    if(best>0.5){vc++;if(first<0)first=f;last=f}}
+  const fr=Hp/SR;return{voiced:vc*fr,start:first<0?0:first*fr,end:last<0?0:last*fr+W/SR,peakDb:10*Math.log10(peak+1e-12)}}
+
+root.ChantFeedback={compare,features,trim,dtw,voicing,resample,SR};
 if(typeof module!=='undefined')module.exports=root.ChantFeedback;
 })(typeof window!=='undefined'?window:globalThis);

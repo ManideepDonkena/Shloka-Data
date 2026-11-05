@@ -19,3 +19,15 @@
 | MMS/wav2vec2 forced alignment of the recording (already used for the chant data) | per-word timing and confidence on the learner's own audio | needs torch; run on the GPU box, not the free web service |
 | wav2vec2 phoneme recogniser (e.g. facebook/wav2vec2-lv-60-espeak-cv-ft, as in OpenPronounce / pronounce-assess) plus GOP/DTW against reference phonemes | real phoneme-level mispronunciation | ~350 MB model; server or Transformers.js |
 | Teacher comments on a recording | human feedback, as on the Narottam app | needs audio storage |
+
+## Word scoring (mic feedback)
+The browser only checks that you chanted (voicing) and your pace. Whether the **words** were right comes from
+`app/scorer.py`: the MMS speech model forced-aligns the recording to the words of the part and gives each word a
+clarity score (green / orange / red). It needs torch + torchaudio, so it runs on a GPU machine, not on Render free:
+
+    SCORER_KEY=<secret> PORT=8765 /home/mani/shloka/venv/bin/python app/scorer.py
+
+then set `SCORER_URL` (where Render can reach it, e.g. a Cloudflare tunnel URL) and the same `SCORER_KEY` on Render.
+Calibration on 30 BrajaBeats verses (a human chanter, 120 pādas): correct pāda median 100 (only 1 of 120 below 50),
+wrong pāda and other verse 0 in all 240 cases; silence/noise are refused before scoring. It judges the sounds of the
+words, not pitch or melody. Without the scorer the app says "Heard you · pace" and gives no score.
