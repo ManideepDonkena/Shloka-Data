@@ -93,6 +93,12 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
 .dkn{border:1px solid var(--teal);background:transparent;color:var(--teal);border-radius:999px;padding:5px 14px;font-weight:600;font-size:.92rem}.dkn:disabled{opacity:.35;cursor:default}
 .say{float:right;border:1px solid var(--line);background:var(--cream);border-radius:999px;padding:3px 12px;font:600 .8rem "DM Sans";color:var(--ink);text-transform:none;letter-spacing:0}
 .purp .say{float:none;margin-bottom:10px}.say[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:#fff}
+.lect .who{font-weight:600;margin:2px 0 8px}.lect .who small{display:block;font-weight:400;color:var(--muted);font-size:.85rem}
+.lect .clip{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:1px solid var(--line);background:var(--cream);border-radius:12px;padding:9px 12px;margin:6px 0;font:inherit;color:var(--ink)}
+.lect .clip b{flex:1}.lect .clip small{color:var(--muted)}.lect .words{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 6px}
+.lect .words button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 11px;font:italic 500 .92rem "Noto Serif",Georgia,serif;color:var(--ink)}
+.lect .words button small{font:400 .75rem "DM Sans";color:var(--muted);margin-left:4px}
+.lect iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:12px;margin-top:8px;background:#000}.lect .yt{font-size:.85rem}
 </style></head><body>
 <header class="top"><div class="wrap">
   <div class="bar1">
@@ -112,6 +118,7 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
   <p class="note hint" id="tierNote"></p>
   <details class="tr" id="fullv"><summary>Full verse, as chanted (sandhi joined)</summary><div class="full" id="fullTxt"></div></details>
   <section class="card"><h4>Translation <button class="say" id="sayTr" type="button" aria-label="Listen to the translation">🔊 Listen</button></h4><div id="tr"></div></section>
+  <section class="card lect" id="lect" hidden><h4>Class on this verse</h4><div id="lectBody"></div><div id="lectPlayer"></div></section>
   <details class="purpd" id="purp"><summary>Purport <small id="purpMeta"></small></summary><div class="purp"><button class="say" id="sayPu" type="button">🔊 Listen to the purport</button></div><div id="purpTxt" class="purp"></div></details>
   <div class="prog"><i id="progBar"></i></div><div class="note" id="markNote" style="margin-top:4px;text-align:center"></div>
   <div class="vnav"><button id="vPrev">‹ <span></span></button><button id="vNext"><span></span> ›</button></div>
@@ -284,7 +291,7 @@ function splitOf(w){const sy=(w.synonym||'').trim();if(!sy)return'';
 function draw(){if(!V)return;const keep=$('#scroll').scrollTop;
   [...$('#tiers').children].forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===tier));
   $('#ref').textContent='Bhagavad-gītā '+V.id;$('#chname').textContent='Chapter '+V.chapter+' · '+(CH[+V.chapter]||'');
-  $('#tocBtn').textContent='BG '+V.id+'  ▾';$('#tr').textContent=V.translation;paintPurport();$('#fullTxt').textContent=(V.sanskrit||'').split('\n').filter(l=>!/वाच\s*$/.test(l.trim())).join('\n');$('#tierNote').textContent=NOTES[tier];
+  $('#tocBtn').textContent='BG '+V.id+'  ▾';$('#tr').textContent=V.translation;paintPurport();paintLecture();$('#fullTxt').textContent=(V.sanskrit||'').split('\n').filter(l=>!/वाच\s*$/.test(l.trim())).join('\n');$('#tierNote').textContent=NOTES[tier];
   const L=V.lines,box=$('#block');box.innerHTML='';ALLW=[];
   const sd=on('#tDev'),si=on('#tIast'),sm=on('#mean'),ssh=on('#sandhi');
   const mk={verse:[{el:box,span:V.verse_audio||spanOf(L.flatMap(words))}],hemi:[],pada:[],word:[]};
@@ -306,6 +313,31 @@ function draw(){if(!V)return;const keep=$('#scroll').scrollTop;
       half.append(row)});box.append(half)}
   UN=mk[tier];SELI=Math.min(SELI,UN.length-1);paintSel();paintMarks();paintSummary();$('#scroll').scrollTop=keep}
 
+/* Classes on the verse: times inside a YouTube video (found by tts/lecture/segment_lecture.py, trimmed in
+   lecture_editor.html). The video itself plays from YouTube; nothing is copied. */
+let LECT=null;
+async function loadLectures(){if(LECT)return LECT;
+  try{LECT=(await fetchJson('api/lectures',6000)).lectures}catch(e){
+    try{const ix=await (await fetch('lectures/index.json')).json();LECT=await Promise.all(ix.lectures.map(async id=>(await fetch('lectures/'+id+'.json')).json()))}catch(e2){LECT=[]}}
+  return LECT}
+const mmss=t=>{t=Math.max(0,Math.round(t));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')};
+function playLecture(L,a,b,label){stop();const P=$('#lectPlayer');P.innerHTML='';
+  const f=document.createElement('iframe');f.allow='autoplay; encrypted-media; picture-in-picture';f.allowFullscreen=true;f.title=label;
+  f.src=`https://www.youtube-nocookie.com/embed/${encodeURIComponent(L.video)}?start=${Math.floor(a)}&end=${Math.ceil(b)}&autoplay=1&rel=0&modestbranding=1`;
+  const y=document.createElement('a');y.className='yt';y.href=`https://www.youtube.com/watch?v=${encodeURIComponent(L.video)}&t=${Math.floor(a)}s`;y.target='_blank';y.rel='noopener';
+  y.textContent=`Open on YouTube at ${mmss(a)} (if the video does not play here)`;P.append(f,y);P.scrollIntoView({block:'nearest',behavior:'smooth'})}
+async function paintLecture(){const box=$('#lect'),B=$('#lectBody');const want=V&&V.id;box.hidden=true;B.innerHTML='';$('#lectPlayer').innerHTML='';
+  const all=await loadLectures();if(!V||V.id!==want)return;
+  const here=all.filter(L=>L.verses&&L.verses[V.id]);if(!here.length)return;box.hidden=false;
+  for(const L of here){const sec=L.verses[V.id];
+    const w=document.createElement('div');w.className='who';w.textContent=L.speaker||'';const sm=document.createElement('small');sm.textContent=(L.title||'')+(L.language?' · '+L.language:'');w.append(sm);B.append(w);
+    const c=document.createElement('button');c.className='clip';c.innerHTML='<span>▶</span><b></b><small></small>';
+    c.children[1].textContent='What he says about this verse';c.children[2].textContent=`${mmss(sec.start)}–${mmss(sec.end)} · ${Math.max(1,Math.round((sec.end-sec.start)/60))} min`;
+    c.onclick=()=>playLecture(L,sec.start,sec.end,'Commentary on '+V.id);B.append(c);
+    const ws=Object.entries(sec.words||{});
+    if(ws.length){const h=document.createElement('div');h.className='note';h.textContent='Word by word:';B.append(h);const row=document.createElement('div');row.className='words';
+      ws.sort((a,b)=>a[1][0].start-b[1][0].start).forEach(([tok,cl])=>{const x=cl[0],bt=document.createElement('button');bt.textContent=tok;
+        const t=document.createElement('small');t.textContent=mmss(x.end-x.start);bt.append(t);bt.onclick=()=>playLecture(L,x.start,x.end,tok);row.append(bt)});B.append(row)}}}
 let PU=null;
 async function paintPurport(){const d=$('#purp'),t=$('#purpTxt');t.textContent='';
   let txt=(V.purport||'').trim();

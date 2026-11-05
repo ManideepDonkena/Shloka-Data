@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lecture Trimmer</title>
+<style>
+:root{--bg:#faf8f1;--card:#fffdf6;--ink:#183b45;--muted:#61767a;--line:rgba(24,59,69,.15);--teal:#2aa591;--warn:#e08a5a}
+@media(prefers-color-scheme:dark){:root{--bg:#0d2734;--card:#12303c;--ink:#f3ecd9;--muted:#9bb2b4;--line:rgba(255,255,255,.18)}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media(max-width:820px){main{grid-template-columns:1fr}}
+.top{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+h1{font-size:1.2rem;margin:0 12px 0 0}
+input,select,button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:6px 10px}
+button{cursor:pointer}button.pri{background:var(--teal);border-color:var(--teal);color:#fff}
+.stick{position:sticky;top:8px;align-self:start}
+#player{width:100%;aspect-ratio:16/9;background:#000;border-radius:12px}
+.now{font:600 1.3rem ui-monospace,monospace;margin:8px 0}.muted{color:var(--muted)}
+.v{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:12px}
+.v h3{margin:0 0 4px;font-size:1rem;display:flex;gap:8px;align-items:center}.deva{font-family:"Noto Serif Devanagari",serif;color:var(--muted);font-size:.95rem;white-space:pre-line}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
+.row .lab{min-width:120px;font-style:italic}.t{width:74px;text-align:center;font-family:ui-monospace,monospace}
+.sm{padding:3px 8px;font-size:.85rem}.del{color:var(--warn)}
+#msg{min-height:1.2em}
+</style></head><body>
+<main>
+  <div class="top"><h1>Lecture trimmer</h1>
+    <select id="pick" aria-label="Lecture"></select>
+    <input id="key" type="password" placeholder="Teacher key (to save)" autocomplete="current-password">
+    <button class="pri" id="save">Save</button><button id="dl">Download JSON</button>
+    <a href="learn.html" class="muted">← Learner page</a><span id="msg" class="muted"></span></div>
+  <section class="stick"><div id="player"></div>
+    <div class="now" id="now">0:00</div>
+    <div class="row"><button id="b10">−10 s</button><button id="b2">−2 s</button><button id="pp">Play / pause</button><button id="f2">+2 s</button><button id="f10">+10 s</button></div>
+    <p class="muted">How to use: play a clip, pause where it should begin or end, then press <b>start = now</b> or <b>end = now</b>. ±1 nudges by a second. The learner page shows exactly these clips. Times found automatically are a first draft.</p>
+  </section>
+  <section id="list"></section>
+</main>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+const $=s=>document.querySelector(s);
+let L=null,PL=null,stopAt=null,TOK={};
+const mm=t=>{t=Math.max(0,Math.round(t));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')};
+const sec=s=>{const p=String(s).trim().split(':').map(Number);return p.some(isNaN)?null:p.reduce((a,b)=>a*60+b,0)};
+const say=(t,bad)=>{$('#msg').textContent=t;$('#msg').style.color=bad?'var(--warn)':''};
+const cur=()=>PL&&PL.getCurrentTime?PL.getCurrentTime():0;
+try{$('#key').value=sessionStorage.getItem('lt-key')||''}catch(e){}
+$('#key').onchange=()=>{try{sessionStorage.setItem('lt-key',$('#key').value)}catch(e){}};
+
+async function loadAll(){let ls=[];
+  try{ls=(await (await fetch('api/lectures')).json()).lectures}catch(e){}
+  if(!ls||!ls.length){try{const ix=await (await fetch('lectures/index.json')).json();ls=await Promise.all(ix.lectures.map(async id=>(await fetch('lectures/'+id+'.json')).json()))}catch(e){ls=[]}}
+  return ls}
+function play(a,b){if(!PL)return;PL.seekTo(a,true);PL.playVideo();stopAt=b}
+setInterval(()=>{const t=cur();$('#now').textContent=mm(t);if(stopAt!=null&&t>=stopAt){PL.pauseVideo();stopAt=null}},200);
+for(const [id,d] of [['b10',-10],['b2',-2],['f2',2],['f10',10]])$('#'+id).onclick=()=>PL&&PL.seekTo(cur()+d,true);
+$('#pp').onclick=()=>{if(!PL)return;PL.getPlayerState()===1?PL.pauseVideo():PL.playVideo()};
+
+function timeRow(label,obj,onDel){const r=document.createElement('div');r.className='row';
+  const lab=document.createElement('span');lab.className='lab';lab.textContent=label;r.append(lab);
+  const mk=(k)=>{const i=document.createElement('input');i.className='t';i.value=mm(obj[k]);i.onchange=()=>{const v=sec(i.value);if(v==null){i.value=mm(obj[k]);return}obj[k]=v;dirty()};return i};
+  const a=mk('start'),b=mk('end');
+  const btn=(t,f,c)=>{const x=document.createElement('button');x.className='sm'+(c?' '+c:'');x.textContent=t;x.onclick=f;return x};
+  const refresh=()=>{a.value=mm(obj.start);b.value=mm(obj.end)};
+  r.append(btn('▶',()=>play(obj.start,obj.end)),btn('start = now',()=>{obj.start=Math.round(cur()*10)/10;refresh();dirty()}),btn('−1',()=>{obj.start-=1;refresh();dirty()}),a,btn('+1',()=>{obj.start+=1;refresh();dirty()}),
+    document.createTextNode('→'),btn('−1',()=>{obj.end-=1;refresh();dirty()}),b,btn('+1',()=>{obj.end+=1;refresh();dirty()}),btn('end = now',()=>{obj.end=Math.round(cur()*10)/10;refresh();dirty()}));
+  if(onDel)r.append(btn('delete',onDel,'del'));return r}
+let changed=false;const dirty=()=>{changed=true;say('Not saved yet')};
+
+async function verseInfo(id){if(TOK[id])return TOK[id];
+  try{const v=await (await fetch('api/verses/'+id)).json();TOK[id]={tokens:v.lines.flatMap(l=>l.chunks.flatMap(c=>c.words.map(w=>w.token))),deva:(v.sanskrit||'').split('\n').filter(l=>!/वाच\s*$/.test(l)).join('\n')}}
+  catch(e){TOK[id]={tokens:[],deva:''}}return TOK[id]}
+
+async function draw(){const box=$('#list');box.innerHTML='';
+  const ids=Object.keys(L.verses).sort((a,b)=>L.verses[a].start-L.verses[b].start);
+  for(const id of ids){const s=L.verses[id],info=await verseInfo(id),d=document.createElement('div');d.className='v';
+    d.innerHTML='<h3></h3><div class="deva"></div>';d.firstChild.textContent='BG '+id+(s.recited===false?'  (found by discussion, not a clear recitation)':'');d.children[1].textContent=info.deva;
+    d.append(timeRow('Whole verse',s,()=>{if(confirm('Remove BG '+id+' from this lecture?')){delete L.verses[id];dirty();draw()}}));
+    for(const [tok,cl] of Object.entries(s.words||{}).sort((a,b)=>a[1][0].start-b[1][0].start))
+      cl.forEach((c,i)=>d.append(timeRow(tok,c,()=>{cl.splice(i,1);if(!cl.length)delete s.words[tok];dirty();draw()})));
+    const add=document.createElement('div');add.className='row';const sel=document.createElement('select');
+    sel.innerHTML='<option value="">+ add a word clip…</option>';info.tokens.forEach(t=>{const o=document.createElement('option');o.value=o.textContent=t;sel.append(o)});
+    sel.onchange=()=>{const t=sel.value;if(!t)return;const now=Math.round(cur());(s.words[t]=s.words[t]||[]).push({start:now,end:now+30});dirty();draw()};
+    add.append(sel);d.append(add);box.append(d)}
+  const addV=document.createElement('div');addV.className='row';const vi=document.createElement('input');vi.placeholder='verse id, e.g. 6.38';const vb=document.createElement('button');vb.textContent='+ add verse at the current time';
+  vb.onclick=()=>{const v=vi.value.trim();if(!/^\d{1,2}\.\d{1,3}$/.test(v)||L.verses[v])return say('Type a new verse id like 6.38',true);const t=Math.round(cur());L.verses[v]={start:t,end:t+120,recited:true,words:{}};dirty();draw()};
+  addV.append(vi,vb);box.append(addV)}
+
+$('#save').onclick=async()=>{if(!L)return;const k=$('#key').value;if(!k)return say('Type the teacher key first.',true);
+  try{const r=await fetch('api/lectures/'+encodeURIComponent(L.video),{method:'PUT',headers:{'Content-Type':'application/json','X-Teacher-Key':k},body:JSON.stringify(L)});
+    const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.status);changed=false;say('Saved. Learners see it within 2 minutes.')}catch(e){say('Not saved: '+e.message,true)}};
+$('#dl').onclick=()=>{if(!L)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(L,null,1)],{type:'application/json'}));a.download=L.video+'.json';a.click()};
+addEventListener('beforeunload',e=>{if(changed){e.preventDefault();e.returnValue=''}});
+
+let ALL=[];
+async function open_(i){L=JSON.parse(JSON.stringify(ALL[i]));delete L.edited;changed=false;say('');
+  if(PL)PL.cueVideoById(L.video);else PL=new YT.Player('player',{videoId:L.video,host:'https://www.youtube-nocookie.com',playerVars:{rel:0,modestbranding:1}});
+  await draw()}
+window.onYouTubeIframeAPIReady=async()=>{ALL=await loadAll();if(!ALL.length)return say('No lectures found.',true);
+  ALL.forEach((l,i)=>{const o=document.createElement('option');o.value=i;o.textContent=(l.speaker||'')+' · '+(l.title||l.video);$('#pick').append(o)});
+  $('#pick').onchange=e=>{if(changed&&!confirm('Discard unsaved changes?'))return;open_(+e.target.value)};open_(0)};
+</script></body></html>
