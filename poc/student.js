@@ -83,6 +83,6 @@ function showFb(r,msg){const b=$('#fb');b.hidden=false;
   b.className='fb '+(r.score>=75?'good':r.score>=50?'ok':'low');$('#fbScore').textContent=r.score;
   $('#fbTxt').innerHTML='';const l=document.createElement('div');l.textContent=`Sound ${r.sound} · Pace ${r.pace}`;l.className='fbl';$('#fbTxt').append(l);
   r.tips.slice(0,2).forEach(t=>{const d=document.createElement('div');d.textContent=t;$('#fbTxt').append(d)})}
-$('#fb').onclick=clearFb;
+$('#fb').onclick=()=>{if(FBHOLD){FBHOLD=false;return}clearFb()};   // while practice waits for it, a tap means 'continue'
 
 pull();
