@@ -1,6 +1,6 @@
 {
   "name": "shloka-learn-android",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "Android wrapper (Capacitor) for the Shloka learner page; bundles the verses and chant audio so it works offline",
   "scripts": {
