@@ -74,6 +74,11 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
 .ic[aria-pressed=true]{background:var(--teal);border-color:var(--teal);color:#fff}
 .vnav{display:flex;gap:10px;margin-top:14px}.vnav button{flex:1;border:1px solid var(--line);background:var(--cream);border-radius:14px;padding:12px 8px;font-weight:600}
 .vnav button:last-child{background:var(--teal);border-color:var(--teal);color:#fff}.vnav button:disabled{opacity:.35;cursor:default}
+.help ol{margin:0;padding:0;list-style:none;display:grid;gap:10px;counter-reset:h}
+.help li{counter-increment:h;display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;line-height:1.4}
+.help li::before{content:counter(h);width:28px;height:28px;border-radius:50%;background:var(--gold);color:#183b45;font-weight:700;display:grid;place-items:center}
+.help b{display:block}.help span{color:var(--muted);font-size:.92rem}
+.hbtn{width:100%;border:0;border-radius:14px;background:var(--teal);color:#fff;padding:12px;font-weight:600}
 </style></head><body>
 <header class="top"><div class="wrap">
   <div class="bar1">
@@ -141,7 +146,22 @@ body.recall .hide-able{filter:blur(8px);cursor:pointer}body.recall .hide-able.sh
     <button class="pill" id="mean" aria-pressed="true">Meanings</button>
     <button class="pill" id="recall" aria-pressed="false">Recall mode</button>
   </div>
+  <button class="pill" id="helpBtn">How to use this page</button>
   <a href="index.html" class="note">Study &amp; tagging tools →</a>
+</div></div></div>
+
+<div class="sheet help" id="helpSheet" role="dialog" aria-label="How to use"><div class="bk" data-close></div><div class="pn"><div class="in">
+  <h3>How to learn a verse</h3>
+  <ol>
+    <li><div><b>Pick a verse</b><span>Tap “BG 1.1 ▾” at the top to choose a chapter and verse. Use ‹ › or the big Next verse button to move on.</span></div></li>
+    <li><div><b>Choose the size of the part</b><span>Verse, Halves, Pādas or Words. Tap any word to hear that part. Meanings are shown under each word.</span></div></li>
+    <li><div><b>Press ▶ to practise</b><span>You hear a part, then it is <em>Your turn</em> to chant it back (the blue bar is your time). It repeats, then moves to the next part.</span></div></li>
+    <li><div><b>Tune it in ⚙ Settings</b><span>Gap length, repeats, speed (pitch stays natural), “Hold the end” for long vowels, Build-up (replay everything so far and chant it all), text size.</span></div></li>
+    <li><div><b>Get feedback with 🎤</b><span>Switch the mic on, use headphones, and chant in your turn. You get a score for sound and pace, and a dot under each word: green is good, orange needs another try.</span></div></li>
+    <li><div><b>Mark your progress</b><span>★ Mark verses to come back to, ✓ Learned when you know one. Under Settings → Student, add your name to keep progress and scores on any device.</span></div></li>
+    <li><div><b>Read the meaning</b><span>Scroll down for the translation and Prabhupāda’s purport.</span></div></li>
+  </ol>
+  <button class="hbtn" data-close>Start</button>
 </div></div></div>
 
 <script>
@@ -346,6 +366,8 @@ $('#sum').onclick=()=>openSheet('#setSheet');
 
 const applyFs=()=>document.documentElement.style.setProperty('--fs',$('#fs').value);$('#fs').addEventListener('change',applyFs);applyFs();
 $('#mic').onclick=()=>$('#fbOn').click();
+$('#helpBtn').onclick=()=>{closeSheets();openSheet('#helpSheet')};
+if(lsGet('shlokaHelpSeen','')!=='1'){lsSet('shlokaHelpSeen','1');setTimeout(()=>openSheet('#helpSheet'),600)}   // first visit only
 /* ---------- marks (saved on this device) ---------- */
 const MK=(()=>{try{return JSON.parse(localStorage.getItem('shlokaMarks')||'{}')}catch(e){return{}}})();
 let saveMk=()=>lsSet('shlokaMarks',JSON.stringify(MK));
