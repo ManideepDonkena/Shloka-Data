@@ -1,13 +1,2 @@
-/.vscode
-__pycache__/
-*.pyc
-
-# Python environments (~15 GB) — rebuilt from poc/README.md
-/.venv
-/.venv-nemo
-
-# Model artefacts and derived audio — regenerate, never commit
-/poc/.sushrota
-/poc/vocals
-/poc/backups
-/poc/data.json.tmp
+node_modules/
+*.apk
