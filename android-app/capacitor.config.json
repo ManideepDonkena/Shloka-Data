@@ -1,0 +1,6 @@
+{
+  "appId": "org.shloka.learn",
+  "appName": "Shloka Learn",
+  "webDir": "www",
+  "server": { "androidScheme": "https" }
+}

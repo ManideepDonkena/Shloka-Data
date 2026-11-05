@@ -114,9 +114,26 @@ class H(SimpleHTTPRequestHandler):
     def ip(self):
         return (self.headers.get("X-Forwarded-For") or self.client_address[0]).split(",")[0].strip()
 
+    CORS_OK = ("https://localhost", "http://localhost", "capacitor://localhost")
+
+    def cors(self):
+        o = self.headers.get("Origin", "")
+        if o in self.CORS_OK:                       # the Android app (Capacitor) calls this API from its own origin
+            self.send_header("Access-Control-Allow-Origin", o)
+            self.send_header("Vary", "Origin")
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.cors()
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Student-Code, X-Teacher-Key")
+        self.send_header("Access-Control-Max-Age", "86400")
+        self.end_headers()
+
     def send_json(self, obj, code=200):
         b = json.dumps(obj).encode()
         self.send_response(code)
+        self.cors()
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(b)))
         self.send_header("Cache-Control", "no-store")
