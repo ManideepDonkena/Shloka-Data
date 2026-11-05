@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- B · Pāñcajanya: the conch that opens the Gītā (1.15), its sound rising as three waves of chant -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="75%"><stop offset="0" stop-color="#e9792c"/><stop offset="1" stop-color="#9c2f1a"/></radialGradient>
+    <linearGradient id="shell" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fffaf0"/><stop offset="1" stop-color="#ead8bf"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g transform="translate(-14,22) rotate(-20 256 256)">
+    <!-- body of the conch -->
+    <path d="M120 300 C 120 210, 210 150, 300 158 C 360 164, 400 200, 404 246 C 408 300, 360 340, 300 350 C 230 362, 160 352, 120 300 Z" fill="url(#shell)"/>
+    <!-- spire -->
+    <path d="M300 158 C 330 140, 362 128, 400 124 C 392 150, 384 170, 404 246 C 380 210, 350 180, 300 158 Z" fill="#f4e6cf"/>
+    <path d="M318 150 C 340 142, 362 138, 392 136" stroke="#c9a77d" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M330 162 C 352 156, 370 154, 394 154" stroke="#c9a77d" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <!-- lip / opening -->
+    <path d="M120 300 C 150 270, 210 262, 262 280 C 300 294, 330 320, 330 344 C 270 360, 170 350, 120 300 Z" fill="#f2b08a"/>
+    <path d="M150 300 C 190 286, 240 290, 280 312" stroke="#d5815c" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <!-- ridges -->
+    <g stroke="#d9c2a0" stroke-width="5" fill="none" stroke-linecap="round"><path d="M210 182 C 236 214, 250 246, 254 280"/><path d="M254 166 C 280 206, 294 246, 296 292"/></g>
+    <!-- gold bands -->
+    <path d="M128 318 C 170 352, 240 364, 300 352" stroke="#f6c24b" stroke-width="9" fill="none" stroke-linecap="round"/>
+  </g>
+  <g fill="none" stroke="#ffe3a3" stroke-linecap="round" transform="translate(372 116)">
+    <path d="M0 40 q 26 -22 52 0" stroke-width="12"/><path d="M-14 6 q 40 -34 80 0" stroke-width="10" opacity=".75"/><path d="M-28 -28 q 54 -46 108 0" stroke-width="8" opacity=".5"/>
+  </g>
+</svg>

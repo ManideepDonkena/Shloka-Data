@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- A · Venu & Mayūra-piccha: Krishna's peacock feather over his flute, sound rising from the flute -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="75%"><stop offset="0" stop-color="#2b3a85"/><stop offset="1" stop-color="#121a45"/></radialGradient>
+    <linearGradient id="flute" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b8862b"/><stop offset=".5" stop-color="#f3c969"/><stop offset="1" stop-color="#b8862b"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g transform="rotate(-28 256 256)">
+    <!-- barbs -->
+    <g stroke="#58c08f" stroke-width="3" stroke-linecap="round" opacity=".75" fill="none">
+      <path d="M256 430 L256 150"/>
+      <path d="M256 400 C 225 370, 200 330, 190 280"/><path d="M256 400 C 287 370, 312 330, 322 280"/>
+      <path d="M256 370 C 222 340, 196 300, 186 248"/><path d="M256 370 C 290 340, 316 300, 326 248"/>
+      <path d="M256 340 C 220 310, 196 268, 190 220"/><path d="M256 340 C 292 310, 316 268, 322 220"/>
+    </g>
+    <!-- the eye -->
+    <path d="M256 92 C 330 120, 338 230, 256 286 C 174 230, 182 120, 256 92 Z" fill="#c9a227"/>
+    <path d="M256 112 C 316 138, 320 226, 256 268 C 192 226, 196 138, 256 112 Z" fill="#2aa36b"/>
+    <path d="M256 134 C 302 156, 304 220, 256 250 C 208 220, 210 156, 256 134 Z" fill="#20b6c9"/>
+    <path d="M256 156 C 290 174, 290 214, 256 234 C 222 214, 222 174, 256 156 Z" fill="#1745b0"/>
+    <ellipse cx="256" cy="196" rx="15" ry="20" fill="#0a1640"/>
+    <ellipse cx="250" cy="188" rx="5" ry="6" fill="#ffffff" opacity=".55"/>
+  </g>
+  <!-- flute -->
+  <g transform="rotate(14 256 380)">
+    <rect x="88" y="364" width="336" height="30" rx="15" fill="url(#flute)"/>
+    <rect x="150" y="364" width="9" height="30" fill="#8a5d17" opacity=".55"/><rect x="380" y="364" width="9" height="30" fill="#8a5d17" opacity=".55"/>
+    <g fill="#5a3a0c"><circle cx="210" cy="379" r="5.5"/><circle cx="240" cy="379" r="5.5"/><circle cx="270" cy="379" r="5.5"/><circle cx="300" cy="379" r="5.5"/><circle cx="330" cy="379" r="5.5"/></g>
+    <g fill="none" stroke="#ffd98a" stroke-linecap="round"><path d="M440 360 q 18 19 0 38" stroke-width="7"/><path d="M462 346 q 30 33 0 66" stroke-width="6" opacity=".7"/></g>
+  </g>
+</svg>

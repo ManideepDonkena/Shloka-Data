@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- C · Śloka on a palm leaf: the word itself, written like a manuscript, with a bead for the chanting -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="80%"><stop offset="0" stop-color="#7a1f2b"/><stop offset="1" stop-color="#3b0d16"/></radialGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3dfae"/><stop offset="1" stop-color="#d9b874"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect x="58" y="156" width="396" height="200" rx="100" ry="40" fill="url(#leaf)"/>
+  <rect x="58" y="156" width="396" height="200" rx="100" ry="40" fill="none" stroke="#a87c33" stroke-width="5"/>
+  <line x1="92" y1="196" x2="420" y2="196" stroke="#b9904a" stroke-width="2" opacity=".6"/><line x1="92" y1="318" x2="420" y2="318" stroke="#b9904a" stroke-width="2" opacity=".6"/>
+  <text x="262" y="306" text-anchor="middle" font-family="Noto Serif Devanagari, serif" font-weight="800" font-size="150" fill="#5a1220">श्लोक</text>
+  <circle cx="104" cy="256" r="11" fill="#7a1f2b"/><path d="M104 268 C 100 330, 120 390, 170 430" stroke="#e8b84a" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <circle cx="176" cy="436" r="16" fill="#e8b84a"/><circle cx="170" cy="430" r="5" fill="#fff6d8" opacity=".7"/>
+</svg>

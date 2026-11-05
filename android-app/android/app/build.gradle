@@ -7,8 +7,8 @@ android {
         applicationId "org.shloka.learn"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 3
+        versionName "0.3.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,9 +16,25 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Release signing: android-app/android/keystore.properties (never committed) points at your upload key.
+    // Make one with android-app/make_keystore.sh and keep a backup: without it you cannot update the app in the store.
+    def ksFile = rootProject.file("keystore.properties")
+    signingConfigs {
+        if (ksFile.exists()) {
+            def ks = new Properties()
+            ks.load(new FileInputStream(ksFile))
+            release {
+                storeFile file(ks["storeFile"])
+                storePassword ks["storePassword"]
+                keyAlias ks["keyAlias"]
+                keyPassword ks["keyPassword"]
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
+            if (ksFile.exists()) { signingConfig signingConfigs.release }
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
