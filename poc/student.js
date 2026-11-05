@@ -11,26 +11,36 @@ let pushT=null;
 function pushState(){if(!lsGet('shlokaCode',''))return;clearTimeout(pushT);
   pushT=setTimeout(()=>api('PUT','api/me/state',{state:{marks:MK,fb:on('#fbOn')}}).catch(()=>{}),800)}
 const _saveMk=saveMk;saveMk=()=>{_saveMk();pushState()};
-async function pull(){try{const me=await api('GET','api/me');ST.name=me.name;ST.progress=me.progress||{};lsSet('shlokaName',me.name);
+async function pull(){try{const me=await api('GET','api/me');ST.name=me.name;ST.username=me.username||'';ST.progress=me.progress||{};lsSet('shlokaName',me.name);
     const sm=(me.state&&me.state.marks)||{};let ch=false;      // merge: a mark set on either device stays set
     for(const [k,v] of Object.entries(sm)){const m=MK[k]=MK[k]||{};if(v.star&&!m.star){m.star=true;ch=true}if(v.done&&!m.done){m.done=true;ch=true}}
     _saveMk();pushState();if(V)paintMarks()}
   catch(e){if(e.status===401){lsSet('shlokaCode','');ST.name=''}else if(e.message==='Failed to fetch'||e.status===404)ST.server=false}
   paintStudent()}
-function paintStudent(){const b=$('#stBox');b.innerHTML='';const add=(t,cls)=>{const e=document.createElement(t);if(cls)e.className=cls;b.append(e);return e};
+let ACCMODE='in';                                   // which form the signed-out card shows: 'in' | 'up'
+function paintStudent(){const b=$('#stBox');b.innerHTML='';
+  const add=(t,cls,parent)=>{const e=document.createElement(t);if(cls)e.className=cls;(parent||b).append(e);return e};
+  const field=(ph,type,ac,label)=>{const i=add('input');i.placeholder=ph;i.type=type||'text';i.autocomplete=ac||'off';i.maxLength=type==='password'?200:40;i.setAttribute('aria-label',label||ph);i.autocapitalize='none';i.spellcheck=false;return i};
   const code=lsGet('shlokaCode','');
   if(!ST.server){add('p','note').textContent='Student accounts need the app server (they are off on this page). Marks are saved on this device only.';return}
+  const finish=async(r)=>{lsSet('shlokaCode',r.code);lsSet('shlokaName',r.name);ST.name=r.name;ST.username=r.username||'';await pull()};
+  const call=async(path,body,msg,btn)=>{btn.disabled=true;msg.textContent='';try{await finish(await api('POST',path,body))}catch(e){msg.textContent=e.message==='Failed to fetch'?'Could not reach the server.':e.message;btn.disabled=false}};
   if(code){const n=add('div');n.innerHTML='<b></b>';n.firstChild.textContent=ST.name||'Student';
+    if(ST.username){add('p','note').textContent='Signed in as @'+ST.username+'. Your marks and scores are saved to this account.'}
+    else{add('p','note').textContent='You are using a guest account. Add a username and password to keep your progress and sign in on any device.';
+      const u=field('Choose a username','text','username','Username'),pw=field('Choose a password (6+ characters)','password','new-password','Password'),m=add('p','note'),k=add('button','pill');k.textContent='Save my account';
+      k.onclick=async()=>{k.disabled=true;m.textContent='';try{const r=await api('POST','api/auth/claim',{username:u.value,password:pw.value});ST.username=r.username;await pull()}catch(e){m.textContent=e.message;k.disabled=false}}}
     const t=Object.values(ST.progress),att=t.reduce((a,x)=>a+x.n,0);
-    add('p','note').textContent=`${att} practice attempt${att===1?'':'s'} on ${t.length} verse${t.length===1?'':'s'}. Your code: ${code}  (write it down — it signs you in on another device)`;
-    const o=add('button','pill');o.textContent='Sign out';o.onclick=()=>{lsSet('shlokaCode','');lsSet('shlokaName','');ST.name='';ST.progress={};paintStudent();if(V)paintMarks()}}
-  else{const i=add('input');i.placeholder='Your name';i.maxLength=40;i.setAttribute('aria-label','Your name');
-    const r=add('div','row'),a=r.appendChild(document.createElement('button')),c=r.appendChild(document.createElement('input'));
-    a.className='pill';a.textContent='Start as a student';c.placeholder='or enter a code';c.setAttribute('aria-label','Sign-in code');c.size=14;
-    const msg=add('p','note');
-    a.onclick=async()=>{try{if(c.value.trim()){lsSet('shlokaCode',c.value.trim().toUpperCase());await pull();if(!ST.name){msg.textContent='That code was not recognised.'}}
-        else{if(!i.value.trim()){msg.textContent='Type your name first.';return}const s=await api('POST','api/students',{name:i.value});lsSet('shlokaCode',s.code);lsSet('shlokaName',s.name);ST.name=s.name;pushState();await pull()}}
-      catch(e){msg.textContent=e.message==='Failed to fetch'?'Could not reach the server.':e.message}}}}
+    add('p','note').textContent=`${att} practice attempt${att===1?'':'s'} on ${t.length} verse${t.length===1?'':'s'}.`;
+    const o=add('button','pill');o.textContent='Sign out';o.onclick=async()=>{try{await api('POST','api/auth/logout',{})}catch(e){}lsSet('shlokaCode','');lsSet('shlokaName','');ST.name='';ST.username='';ST.progress={};ACCMODE='in';paintStudent();if(V)paintMarks()}}
+  else{const tabs=add('div','row');for(const [k,t] of [['in','Sign in'],['up','Create account']]){const x=add('button','pill',tabs);x.textContent=t;x.setAttribute('aria-pressed',ACCMODE===k);x.onclick=()=>{ACCMODE=k;paintStudent()}}
+    const msg=document.createElement('p');msg.className='note';
+    if(ACCMODE==='in'){const u=field('Username','text','username'),pw=field('Password','password','current-password');add('button','pill').textContent='Sign in';b.lastChild.onclick=function(){call('api/auth/login',{username:u.value,password:pw.value},msg,this)};
+      pw.onkeydown=e=>{if(e.key==='Enter')b.lastChild.click()}}
+    else{const nm=field('Your name (optional)','text','name'),u=field('Choose a username (letters, numbers, . _ -)','text','username','Username'),pw=field('Choose a password (6+ characters)','password','new-password','Password');
+      add('button','pill').textContent='Create my account';b.lastChild.onclick=function(){call('api/auth/register',{name:nm.value,username:u.value,password:pw.value},msg,this)}}
+    b.append(msg);
+    const g=add('button','pill');g.textContent='Just try it (guest, no password)';g.onclick=async function(){this.disabled=true;try{await finish(await api('POST','api/students',{name:'Guest'}))}catch(e){msg.textContent=e.message;this.disabled=false}}}}
 function paintBest(){const p=ST.progress[V&&V.id];if(p)$('#markNote').textContent+=`  ·  Chant score here: best ${p.best}, average ${p.avg} (${p.n} tr${p.n===1?'y':'ies'})`}
 
 /* ---------- microphone (kept open only while feedback is on) ---------- */

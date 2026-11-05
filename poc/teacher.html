@@ -6,12 +6,12 @@ input,button{font:inherit;padding:8px 12px;border-radius:10px;border:1px solid v
 table{width:100%;border-collapse:collapse;margin-top:16px}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);font-size:.92rem}th{color:var(--muted);font-weight:600}.wrap{overflow-x:auto}</style></head>
 <body><main><h1>Students</h1><p style="color:var(--muted)">Needs the teacher key set as TEACHER_KEY on the server. <a href="learn.html">← Learner page</a></p>
 <form id="f"><input id="k" type="password" placeholder="Teacher key" autocomplete="current-password"> <button>Show students</button></form><p id="m"></p>
-<div class="wrap"><table id="t" hidden><thead><tr><th>Name</th><th>Learned</th><th>Marked</th><th>Attempts</th><th>Avg score</th><th>Last practice</th></tr></thead><tbody></tbody></table></div></main>
+<div class="wrap"><table id="t" hidden><thead><tr><th>Name</th><th>Username</th><th>Learned</th><th>Marked</th><th>Attempts</th><th>Avg score</th><th>Last practice</th></tr></thead><tbody></tbody></table></div></main>
 <script>
 const d=t=>t?new Date(t*1000).toLocaleDateString():'—';
 document.getElementById('f').onsubmit=async e=>{e.preventDefault();const m=document.getElementById('m'),t=document.getElementById('t');m.textContent='';
   try{const r=await fetch('api/teacher/students',{headers:{'X-Teacher-Key':document.getElementById('k').value}});if(!r.ok){let j={};try{j=await r.json()}catch(_){}throw new Error(j.error||('Error '+r.status))}
     const j=await r.json(),tb=t.tBodies[0];tb.innerHTML='';
-    j.students.forEach(s=>{const tr=tb.insertRow();[s.name,s.learned,s.marked,s.attempts,s.avg_score??'—',d(s.last_attempt)].forEach(v=>{tr.insertCell().textContent=v})});
+    j.students.forEach(s=>{const tr=tb.insertRow();[s.name,s.username?'@'+s.username:'(guest)',s.learned,s.marked,s.attempts,s.avg_score??'—',d(s.last_attempt)].forEach(v=>{tr.insertCell().textContent=v})});
     t.hidden=false;m.textContent=j.students.length+' student(s). Storage: '+j.storage+(j.storage==='sqlite'?' — a local file that is wiped on every Render restart/deploy, so students disappear. Set the Cloudflare variables (see app/README.md).':'.')}catch(x){m.textContent=x.message}};
 </script></body></html>
