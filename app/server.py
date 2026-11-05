@@ -16,7 +16,7 @@ The page keeps the code in the browser; typing it on another device gives the sa
   GET  /api/verses/<id>       -> the full verse (words, timings, meanings, translation, purport)
   GET  /healthz
 """
-import hashlib, hmac, json, os, re, secrets, sqlite3, sys, threading, time, urllib.request, urllib.error
+import base64, hashlib, hmac, json, os, re, secrets, sqlite3, sys, threading, time, urllib.request, urllib.error
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -85,6 +85,7 @@ SCHEMA = [
         verse TEXT NOT NULL, unit TEXT NOT NULL, idx INTEGER NOT NULL, score INTEGER, sound INTEGER, pace INTEGER,
         ratio REAL, detail TEXT, ts REAL NOT NULL)""",
     "CREATE INDEX IF NOT EXISTS att_student ON attempts(student_id, verse, ts)",
+    "CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY, student_id INTEGER NOT NULL, created REAL NOT NULL)",
     """CREATE TABLE IF NOT EXISTS verses(id TEXT PRIMARY KEY, chapter INTEGER NOT NULL, shloka TEXT NOT NULL, ord INTEGER NOT NULL,
         h TEXT NOT NULL, data TEXT NOT NULL, purport TEXT NOT NULL DEFAULT '')""",
 ]
@@ -143,6 +144,13 @@ def init():
         os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
     for st in SCHEMA:
         q(st)
+    for col in ("username TEXT", "pw TEXT"):                      # accounts added later: add the columns to an existing table
+        try:
+            q("ALTER TABLE students ADD COLUMN " + col)
+        except Exception as e:
+            if "duplicate" not in str(e).lower() and "exists" not in str(e).lower():
+                raise
+    q("CREATE UNIQUE INDEX IF NOT EXISTS students_username ON students(username)")
     DBSTATE.update(ok=True, error="")
 
 
@@ -159,6 +167,31 @@ def ensure_db():
         DBSTATE["error"] = str(e)
         sys.stderr.write("database unavailable: %s (check CF_ACCOUNT_ID, CF_D1_DATABASE_ID, CF_API_TOKEN: token needs Account > D1 > Edit)\n" % e)
         raise
+
+
+USERNAME = re.compile(r"^[a-z0-9][a-z0-9_.-]{2,29}$")
+ROUNDS = 200_000
+
+
+def hash_password(password):                  # same scheme as lesson-board: PBKDF2-SHA256, per-user salt
+    salt = secrets.token_bytes(16)
+    d = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, ROUNDS)
+    return "pbkdf2$%d$%s$%s" % (ROUNDS, base64.b64encode(salt).decode(), base64.b64encode(d).decode())
+
+
+def verify_password(password, stored):
+    try:
+        _, rounds, salt, digest = stored.split("$")
+        got = hashlib.pbkdf2_hmac("sha256", password.encode(), base64.b64decode(salt), int(rounds))
+        return hmac.compare_digest(got, base64.b64decode(digest))
+    except (ValueError, TypeError, AttributeError):
+        return False
+
+
+def new_token(student_id):
+    raw = "".join(secrets.choice(ALPHABET) for _ in range(28))
+    q("INSERT INTO sessions(token_hash, student_id, created) VALUES(?,?,?)", (h(raw), student_id, time.time()))
+    return raw
 
 
 def h(code):
@@ -231,11 +264,14 @@ class H(SimpleHTTPRequestHandler):
 
     def student(self):
         code = (self.headers.get("X-Student-Code") or "").strip().upper()
-        if not re.fullmatch(r"[A-Z0-9-]{12,20}", code):
+        if not re.fullmatch(r"[A-Z0-9-]{12,40}", code):
             return None
         if not throttle(self.ip(), "auth", 120, 600):
             return None
-        rows = q("SELECT * FROM students WHERE code_hash=?", (h(code.replace("-", "")),))
+        key = h(code.replace("-", ""))
+        rows = q("SELECT s.* FROM sessions t JOIN students s ON s.id=t.student_id WHERE t.token_hash=?", (key,))   # a sign-in session
+        if not rows:
+            rows = q("SELECT * FROM students WHERE code_hash=?", (key,))                                          # an older guest code
         r = rows[0] if rows else None
         if r and time.time() - r["seen"] > 300:          # one write per 5 min is plenty (fewer D1 round trips)
             q("UPDATE students SET seen=? WHERE id=?", (time.time(), r["id"]))
@@ -307,12 +343,68 @@ class H(SimpleHTTPRequestHandler):
                 self.wfile.write(b)
                 return
 
+            if method == "POST" and p == "/api/auth/register":
+                if not throttle(self.ip(), "signup", 20):
+                    return self.send_json({"error": "too many sign-ups from here, try later"}, 429)
+                b = self.body()
+                user = str(b.get("username", "")).strip().lower()
+                pw = str(b.get("password", ""))
+                if not USERNAME.match(user):
+                    return self.send_json({"error": "Usernames are 3 to 30 characters: letters, numbers, dots, dashes or underscores."}, 400)
+                if not 6 <= len(pw) <= 200:
+                    return self.send_json({"error": "Choose a password of at least 6 characters."}, 400)
+                if q("SELECT 1 FROM students WHERE username=?", (user,)):
+                    return self.send_json({"error": "That username is taken."}, 409)
+                name = clean_name(b.get("name")) or user
+                dummy = h("".join(secrets.choice(ALPHABET) for _ in range(12)))     # the old code column stays unique and unused
+                q("INSERT INTO students(name,code_hash,created,seen,username,pw) VALUES(?,?,?,?,?,?)",
+                  (name, dummy, time.time(), time.time(), user, hash_password(pw)))
+                sid = q("SELECT id FROM students WHERE username=?", (user,))[0]["id"]
+                return self.send_json({"name": name, "username": user, "code": new_token(sid)}, 201)
+            if method == "POST" and p == "/api/auth/login":
+                ip = self.ip()
+                with LOCK:
+                    fails = [t for t in HITS.get((ip, "loginfail"), []) if time.time() - t < 600]
+                    HITS[(ip, "loginfail")] = fails
+                if len(fails) >= 10:
+                    return self.send_json({"error": "Too many wrong passwords from here. Try again in a few minutes."}, 429)
+                b = self.body()
+                rows = q("SELECT id, name, username, pw FROM students WHERE username=?", (str(b.get("username", "")).strip().lower(),))
+                if not rows or not rows[0]["pw"] or not verify_password(str(b.get("password", "")), rows[0]["pw"]):
+                    with LOCK:
+                        HITS.setdefault((ip, "loginfail"), []).append(time.time())      # only wrong passwords count
+                    return self.send_json({"error": "Wrong username or password."}, 401)
+                r = rows[0]
+                return self.send_json({"name": r["name"], "username": r["username"], "code": new_token(r["id"])})
+            if method == "POST" and p == "/api/auth/claim":              # a guest adds a username and password to keep the account
+                s = self.student()
+                if not s:
+                    return self.send_json({"error": "sign in"}, 401)
+                if s.get("username"):
+                    return self.send_json({"error": "This account already has a username."}, 400)
+                b = self.body()
+                user = str(b.get("username", "")).strip().lower()
+                pw = str(b.get("password", ""))
+                if not USERNAME.match(user):
+                    return self.send_json({"error": "Usernames are 3 to 30 characters: letters, numbers, dots, dashes or underscores."}, 400)
+                if not 6 <= len(pw) <= 200:
+                    return self.send_json({"error": "Choose a password of at least 6 characters."}, 400)
+                if q("SELECT 1 FROM students WHERE username=?", (user,)):
+                    return self.send_json({"error": "That username is taken."}, 409)
+                q("UPDATE students SET username=?, pw=? WHERE id=?", (user, hash_password(pw), s["id"]))
+                return self.send_json({"ok": True, "username": user})
+            if method == "POST" and p == "/api/auth/logout":
+                code = (self.headers.get("X-Student-Code") or "").strip().upper().replace("-", "")
+                if code:
+                    q("DELETE FROM sessions WHERE token_hash=?", (h(code),))
+                return self.send_json({"ok": True})
+
             if p == "/api/teacher/students" and method == "GET":
                 if not TEACHER_KEY:
                     return self.send_json({"error": "teacher view is off: set TEACHER_KEY in the server's environment"}, 503)
                 if not hmac.compare_digest(self.headers.get("X-Teacher-Key", ""), TEACHER_KEY):
                     return self.send_json({"error": "wrong teacher key"}, 403)
-                rows = q("""SELECT s.id,s.name,s.created,s.seen,s.state,
+                rows = q("""SELECT s.id,s.name,s.username,s.created,s.seen,s.state,
                     (SELECT COUNT(*) FROM attempts a WHERE a.student_id=s.id) n,
                     (SELECT ROUND(AVG(score)) FROM attempts a WHERE a.student_id=s.id) avg,
                     (SELECT MAX(ts) FROM attempts a WHERE a.student_id=s.id) last
@@ -320,7 +412,7 @@ class H(SimpleHTTPRequestHandler):
                 out = []
                 for r in rows:
                     m = json.loads(r["state"] or "{}").get("marks", {})
-                    out.append({"name": r["name"], "joined": r["created"], "seen": r["seen"], "attempts": r["n"], "avg_score": r["avg"],
+                    out.append({"name": r["name"], "username": r.get("username") or "", "joined": r["created"], "seen": r["seen"], "attempts": r["n"], "avg_score": r["avg"],
                                 "last_attempt": r["last"], "learned": sum(1 for v in m.values() if v.get("done")), "marked": sum(1 for v in m.values() if v.get("star"))})
                 return self.send_json({"students": out, "storage": "d1" if USE_D1 else "sqlite"})
 
@@ -333,7 +425,7 @@ class H(SimpleHTTPRequestHandler):
             if p == "/api/me" and method == "GET":
                 pr = q("""SELECT verse, COUNT(*) n, MAX(score) best, CAST(ROUND(AVG(score)) AS INT) avg, MAX(ts) last
                     FROM attempts WHERE student_id=? GROUP BY verse""", (s["id"],))
-                return self.send_json({"name": s["name"], "state": json.loads(s["state"] or "{}"), "progress": {r["verse"]: r for r in pr}})
+                return self.send_json({"name": s["name"], "username": s.get("username") or "", "state": json.loads(s["state"] or "{}"), "progress": {r["verse"]: r for r in pr}})
             if p == "/api/me/state" and method == "PUT":
                 st = self.body().get("state")
                 if not isinstance(st, dict):
