@@ -145,7 +145,7 @@ class H(SimpleHTTPRequestHandler):
     def do_GET(self):
         u = urlparse(self.path)
         if u.path == "/healthz":
-            return self.send_json({"ok": True})
+            return self.send_json({"ok": True, "storage": "d1" if USE_D1 else "sqlite"})
         if u.path.startswith("/api/"):
             return self.api("GET", u)
         if u.path == "/":
